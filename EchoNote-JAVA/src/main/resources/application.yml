@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: SpringSecurity
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/echonote
+    username: root
+    password: 1353914278
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  security:
+    user:
+      name: user
+      password: 123456
+
+mybatis:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 配置JWT生成token密钥和持续时间  -- 自定义
+jwt:
+  secret: ewAiADkAOgA8ADcAWQBbAF0AXwBjAGUAaQBwAHMAfQB/AIEAhwCJAI0AkwCVAJcAmQCbAJ0AnwChAKMApQCnAKkAqwCtAK8AsQCzALUAtwC5ALsAvQC/AMEAwwDFAMcAyQDLAM0AzwDRANMA1QDXANkA2wDdAN8A4QDjAOUA5wDpAOsA7QDvAPEA8wD1APcA+QD7AP0A/w==
+  expiration: 86400000
+

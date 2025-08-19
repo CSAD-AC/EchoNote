@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="uno.zhuchen.echonotejava.Mapper.MoodsMapper">
+
+    <insert id="addMood" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO moods(name) VALUES
+        (#{name})
+    </insert>
+    <update id="updateMood">
+        UPDATE moods
+        <set>
+            <if test="name != null">
+                name = #{name},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+    <delete id="deleteMoodById">
+        DELETE FROM moods WHERE id = #{id}
+    </delete>
+    <select id="findAllMoodByCapsulesId" resultType="uno.zhuchen.echonotejava.Project.Capsules.Mood">
+        SELECT id, name, createTime FROM moods WHERE id IN
+        (SELECT mood_id FROM capsules_moods WHERE capsule_id = #{id})
+    </select>
+    <select id="findMoodById" resultType="uno.zhuchen.echonotejava.Project.Capsules.Mood">
+        SELECT id, name, createTime FROM moods WHERE id = #{id}
+    </select>
+    <select id="getPreMoods" resultType="uno.zhuchen.echonotejava.Project.Capsules.Mood">
+        SELECT id, name, createTime FROM moods WHERE id <![CDATA[<=]]> 40
+    </select>
+
+</mapper>

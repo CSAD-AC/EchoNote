@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="uno.zhuchen.echonotejava.Mapper.RolesMapper">
+    <insert id="addRoleForUser">
+        INSERT INTO user_roles(user_id, role_id) VALUES
+        (#{userId}, #{roleId})
+    </insert>
+    <select id="findRolesByUserId" resultType="uno.zhuchen.echonotejava.Project.User.Role">
+        SELECT r.name FROM roles r INNER JOIN user_roles u_r ON r.id = u_r.role_id WHERE u_r.user_id = #{id}
+    </select>
+</mapper>

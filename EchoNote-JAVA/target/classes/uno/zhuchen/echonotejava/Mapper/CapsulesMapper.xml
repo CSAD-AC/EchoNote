@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="uno.zhuchen.echonotejava.Mapper.CapsulesMapper">
+
+    <insert id="addCapsules" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO capsules(user_id, title, location, description) VALUES
+        (#{userId}, #{title}, #{location}, #{description})
+    </insert>
+    <insert id="addMoodForCapsules">
+        INSERT INTO capsules_moods(capsule_id, mood_id) VALUES
+        (#{capsulesId}, #{moodId})
+    </insert>
+
+    <update id="updateCapsulesById">
+        UPDATE capsules
+        <set>
+            <if test="title != null">
+                title = #{title},
+            </if>
+            <if test="location != null">
+                location = #{location},
+            </if>
+            <if test="description != null">
+                description = #{description},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+    <delete id="deleteCapsulesById">
+        DELETE FROM capsules WHERE id = #{id}
+    </delete>
+
+    <select id="findCapsulesById" resultType="uno.zhuchen.echonotejava.Project.Capsules.Capsules">
+        SELECT id, user_id AS userId, title, location, description, createTime, updateTime, status FROM capsules WHERE id = #{id}
+    </select>
+    <select id="findCapsulesByUserId" resultType="uno.zhuchen.echonotejava.Project.Capsules.Capsules">
+        SELECT id, user_id AS userId, title, location, description, createTime, updateTime, status FROM capsules WHERE user_id = #{id}
+    </select>
+
+
+</mapper>
