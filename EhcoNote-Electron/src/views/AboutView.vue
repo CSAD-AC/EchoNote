@@ -1,31 +1,5 @@
 <template>
-  <div :class="['home-container', darkMode ? 'dark-mode' : '']">
-    <!-- 顶部导航 -->
-    <header class="header">
-      <div class="logo-container">
-        <img alt="EchoNote Logo" src="../assets/logo.png" class="logo" />
-        <router-link to="/">
-          <h1 class="app-name">EchoNote</h1>
-        </router-link>
-      </div>
-      <div class="right-controls">
-        <div class="nav-container">
-          <router-link to="/about">
-            <h3 class="nav-item">关于</h3>
-          </router-link>
-        </div>
-        <div class="theme-toggle">
-          <el-switch
-            v-model="darkMode"
-            :active-icon="Moon"
-            :inactive-icon="Sunny"
-            width="40px"
-            @change="toggleDarkMode"
-          ></el-switch>
-        </div>
-      </div>
-    </header>
-
+  <Layout>
     <!-- 关于内容区域 -->
     <section class="about-content">
       <div class="about-header">
@@ -94,12 +68,7 @@
         </p>
       </div>
     </section>
-
-    <!-- 页脚 -->
-    <footer class="footer">
-      <p>© 2025 EchoNote. 保留所有权利。</p>
-    </footer>
-  </div>
+  </Layout>
 </template>
 
 <script setup>
@@ -108,91 +77,13 @@
  * 展示应用的功能和设计理念
  */
 // 导入所需图标
-import {
-  Plus,
-  Edit,
-  ChatDotRound,
-  Guide,
-  Sunny,
-  Moon,
-} from "@element-plus/icons-vue";
-import { ElSwitch } from "element-plus";
-import { ref, onMounted } from "vue";
-
-// 定义暗黑模式状态
-const darkMode = ref(false);
-
-// 主题切换函数
-function toggleDarkMode() {
-  if (darkMode.value) {
-    document.documentElement.classList.add("dark");
-  } else {
-    document.documentElement.classList.remove("dark");
-  }
-}
-
-// 挂载时执行
-onMounted(() => {
-  // 检查系统偏好
-  if (
-    window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  ) {
-    darkMode.value = true;
-    document.documentElement.classList.add("dark");
-  }
-});
+import { Plus, Edit, ChatDotRound, Guide } from "@element-plus/icons-vue";
+// 导入公共布局组件
+import Layout from "../components/Layout.vue";
 </script>
 
 <style scoped>
 /* 基础样式 */
-.home-container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  font-family: "Avenir", "Helvetica", "Arial", sans-serif;
-  color: #333;
-}
-
-/* 头部样式 */
-.header {
-  padding: 1rem 2rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.right-controls {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-}
-
-.nav-container {
-  margin: 0;
-}
-
-.logo-container {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.logo {
-  height: 2.5rem;
-}
-
-.app-name {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  background: linear-gradient(90deg, #42b983, #35495e);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 /* 关于内容区域样式 */
 .about-content {
   padding: 3rem 2rem;
@@ -288,37 +179,13 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
-/* 页脚样式 */
-.footer {
-  text-align: center;
-  padding: 2rem;
-  margin-top: auto;
-  color: #666;
-  border-top: 1px solid #eee;
-}
-
-/* 暗黑模式样式 */
-.dark-mode {
-  background-color: #1a1a1a;
-  color: #e0e0e0;
-}
-
-.dark-mode .header {
-  background-color: #252525;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.dark-mode .about-feature-item {
+/* 暗黑模式样式覆盖 */
+.dark .about-feature-item {
   background-color: #252525;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
-.dark-mode .feature-text p {
+.dark .feature-text p {
   color: #b0b0b0;
-}
-
-.dark-mode .footer {
-  color: #909090;
-  border-top: 1px solid #333;
 }
 </style>

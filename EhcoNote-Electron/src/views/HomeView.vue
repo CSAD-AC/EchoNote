@@ -1,34 +1,8 @@
 <template>
-  <div :class="['home-container', darkMode ? 'dark-mode' : '']">
-    <!-- 顶部导航 -->
-    <header class="header">
-      <div class="logo-container">
-        <img alt="EchoNote Logo" src="../assets/logo.png" class="logo" />
-        <router-link to="/">
-          <h1 class="app-name">EchoNote</h1>
-        </router-link>
-      </div>
-      <div class="right-controls">
-        <div class="nav-container">
-          <router-link to="/about">
-            <h3 class="nav-item">关于</h3>
-          </router-link>
-        </div>
-        <div class="theme-toggle">
-          <el-switch
-            v-model="darkMode"
-            :active-icon="Moon"
-            :inactive-icon="Sunny"
-            width="40px"
-            @change="toggleDarkMode"
-          ></el-switch>
-        </div>
-      </div>
-    </header>
-
+  <Layout>
     <!-- 功能卡片区域 -->
     <section class="features-container">
-      <el-row :gutter="60">
+      <el-row :gutter="20">
         <!-- 灵光胶囊 -->
         <el-col :xs="24" :sm="12" :md="12" class="feature-col">
           <el-card
@@ -50,7 +24,7 @@
               <div class="text-container">
                 <h3 class="feature-title">灵光胶囊</h3>
                 <p class="feature-goal">瞬时捕捉</p>
-                <el-button type="primary" class="feature-button" size="default"
+                <el-button type="primary" class="feature-button" size="large"
                   >开始使用</el-button
                 >
               </div>
@@ -79,7 +53,7 @@
               <div class="text-container">
                 <h3 class="feature-title">心流写作</h3>
                 <p class="feature-goal">高效输出</p>
-                <el-button type="primary" class="feature-button" size="default"
+                <el-button type="primary" class="feature-button" size="large"
                   >开始使用</el-button
                 >
               </div>
@@ -93,7 +67,7 @@
             class="feature-card"
             :body-style="{ padding: '0' }"
             shadow="hover"
-            @click="navigateToFeature('thinking')"
+            @click="navigateToFeature('slow-fermentation')"
             style="
               cursor: pointer;
               transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -108,7 +82,7 @@
               <div class="text-container">
                 <h3 class="feature-title">思维慢发酵</h3>
                 <p class="feature-goal">沉淀反思</p>
-                <el-button type="primary" class="feature-button" size="default"
+                <el-button type="primary" class="feature-button" size="large"
                   >开始使用</el-button
                 >
               </div>
@@ -137,7 +111,7 @@
               <div class="text-container">
                 <h3 class="feature-title">思维迷宫</h3>
                 <p class="feature-goal">逻辑谜题</p>
-                <el-button type="primary" class="feature-button" size="default"
+                <el-button type="primary" class="feature-button" size="large"
                   >开始使用</el-button
                 >
               </div>
@@ -146,12 +120,7 @@
         </el-col>
       </el-row>
     </section>
-
-    <!-- 页脚 -->
-    <footer class="footer">
-      <p>© 2025 EchoNote. 保留所有权利。</p>
-    </footer>
-  </div>
+  </Layout>
 </template>
 
 <script setup>
@@ -159,21 +128,11 @@
  * 首页组件
  * 展示四大功能矩阵，提供简洁美观的用户界面
  */
+// 导入公共布局组件
+import Layout from "@/components/Layout.vue";
 // 导入所需图标
-import {
-  ChatDotRound,
-  Edit,
-  Plus,
-  Guide,
-  Sunny,
-  Moon,
-} from "@element-plus/icons-vue";
-import { ElSwitch } from "element-plus";
-import { ref, onMounted, onBeforeUnmount, shallowRef } from "vue";
+import { ChatDotRound, Edit, Plus, Guide } from "@element-plus/icons-vue";
 import { useRouter } from "vue-router";
-
-// 定义暗黑模式状态
-const darkMode = ref(false);
 
 // 初始化路由
 const router = useRouter();
@@ -188,8 +147,8 @@ function navigateToFeature(feature) {
     case "writing":
       router.push("/writing");
       break;
-    case "thinking":
-      router.push("/thinking");
+    case "slow-fermentation":
+      router.push("/slow-fermentation");
       break;
     case "maze":
       router.push("/maze");
@@ -210,48 +169,6 @@ function handleMouseLeave(el) {
   el.style.transform = "translateY(0)";
   el.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)";
 }
-
-// 定义resizeObserver引用
-const resizeObserver = shallowRef(null);
-
-// 主题切换函数
-function toggleDarkMode() {
-  if (darkMode.value) {
-    document.documentElement.classList.add("dark");
-  } else {
-    document.documentElement.classList.remove("dark");
-  }
-}
-
-// 挂载时执行
-onMounted(() => {
-  // 检查系统偏好
-  if (
-    window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  ) {
-    darkMode.value = true;
-    document.documentElement.classList.add("dark");
-  }
-
-  // 解决ResizeObserver错误
-  resizeObserver.value = new ResizeObserver(() => {
-    // 空处理函数
-  });
-
-  // 观察当前组件根元素
-  const el = document.querySelector(".home-container");
-  if (el) {
-    resizeObserver.value.observe(el);
-  }
-});
-
-// 卸载前执行
-onBeforeUnmount(() => {
-  if (resizeObserver.value) {
-    resizeObserver.value.disconnect();
-  }
-});
 </script>
 
 <style scoped>
@@ -266,7 +183,7 @@ onBeforeUnmount(() => {
 }
 
 /* 暗黑模式样式 */
-.dark-mode {
+.dark {
   background-color: #1a1a1a;
   color: #e0e0e0;
 }
@@ -282,7 +199,7 @@ onBeforeUnmount(() => {
   transition: background-color 0.3s ease;
 }
 
-.dark-mode .header {
+.dark .header {
   background-color: #2a2a2a;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
@@ -317,7 +234,7 @@ onBeforeUnmount(() => {
   color: transparent;
 }
 
-.dark-mode .app-name {
+.dark .app-name {
   background: linear-gradient(90deg, #4cd964, #5ac8fa);
   -webkit-background-clip: text;
   background-clip: text;
@@ -330,7 +247,7 @@ onBeforeUnmount(() => {
   transition: color 0.3s ease;
 }
 
-.dark-mode .nav-item {
+.dark .nav-item {
   color: #e0e0e0;
 }
 
@@ -340,12 +257,12 @@ onBeforeUnmount(() => {
   transition: color 0.3s ease;
 }
 
-.dark-mode .el-switch__label {
+.dark .el-switch__label {
   color: #e0e0e0;
 }
 
 /* 确保span元素在暗黑模式下可见 */
-.dark-mode span {
+.dark span {
   color: #e0e0e0 !important;
 }
 
@@ -378,12 +295,19 @@ onBeforeUnmount(() => {
   transition: background-color 0.3s ease;
 }
 
-.dark-mode .el-card {
+.dark .el-card {
   background-color: #2a2a2a;
 }
 /* 卡片样式 */
 .feature-card {
-  margin: 50px;
+  height: 325px;
+  width: 600px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 /* 列间距样式 */
@@ -452,23 +376,11 @@ onBeforeUnmount(() => {
   font-size: 2.5rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: #333;
   transition: color 0.3s ease;
+  color: #2c3e50;
 }
-
-.dark-mode .feature-title {
-  color: #ffffff;
-}
-
-.feature-goal {
-  font-size: 1.8rem;
-  margin-bottom: 1.5rem;
-  color: #666;
-  transition: color 0.3s ease;
-}
-
-.dark-mode .feature-goal {
-  color: #b0b0b0;
+.dark .feature-title {
+  color: #c7c0c0;
 }
 
 .feature-button {
@@ -489,16 +401,9 @@ onBeforeUnmount(() => {
   color: #b0b0b0;
 }
 
-/* 标题样式 */
-.feature-title {
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-  color: #2c3e50;
-}
-
 /* 目标样式 */
 .feature-goal {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   font-weight: 500;
   color: #42b983;
   margin-bottom: 1rem;
@@ -539,10 +444,6 @@ onBeforeUnmount(() => {
 .dark-mode .el-card {
   background-color: #252525;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
-.dark-mode .feature-title {
-  color: #e0e0e0;
 }
 
 .dark-mode .feature-goal {
