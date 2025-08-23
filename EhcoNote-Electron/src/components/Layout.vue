@@ -17,7 +17,7 @@
         <div class="auth-controls">
           <template v-if="userInfo">
             <div class="user-info">
-              <span class="username">[{{ userInfo.userName }}]</span>
+              <span class="username">[{{ userInfo.name }}]</span>
               <button @click="handleLogout" class="logout-btn">注销</button>
             </div>
           </template>
@@ -57,7 +57,7 @@
  */
 // 导入所需图标
 import { Sunny, Moon } from "@element-plus/icons-vue";
-import { ElSwitch } from "element-plus";
+import { ElSwitch, ElMessageBox } from "element-plus";
 import { ref, onMounted, onBeforeUnmount, shallowRef } from "vue";
 import { useRouter } from "vue-router";
 
@@ -74,22 +74,36 @@ const resizeObserver = shallowRef(null);
 function toggleDarkMode() {
   if (darkMode.value) {
     document.documentElement.classList.add("dark");
+    localStorage.setItem("darkMode", "true");
   } else {
     document.documentElement.classList.remove("dark");
+    localStorage.setItem("darkMode", "false");
   }
 }
 
 /**
  * 处理注销功能
- * 清除本地存储中的用户信息并跳转至登录页
+ * 显示二次确认弹窗，确认后清除本地存储中的用户信息并跳转至登录页
  */
 function handleLogout() {
-  // 清除本地存储中的用户信息
-  localStorage.removeItem("userInfo");
-  // 更新用户信息状态
-  userInfo.value = null;
-  // 跳转到登录页
-  router.push("/login");
+  ElMessageBox.confirm("确定要注销当前账户吗？", "注销确认", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(() => {
+      // 清除本地存储中的用户信息
+      localStorage.removeItem("userInfo");
+      // 清除本地存储中的token
+      localStorage.removeItem("token");
+      // 更新用户信息状态
+      userInfo.value = null;
+      // 跳转到登录页
+      router.push("/login");
+    })
+    .catch(() => {
+      // 用户取消操作，不做处理
+    });
 }
 
 /**
@@ -107,18 +121,33 @@ function loadUserInfo() {
   }
 }
 
+function checkLogin() {
+  const token = localStorage.getItem("token");
+  const userInfo = localStorage.getItem("userInfo");
+  if (!token || !userInfo) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userInfo");
+  }
+}
+
 // 挂载时执行
 onMounted(() => {
+  checkLogin();
   // 加载用户信息
   loadUserInfo();
 
-  // 检查系统偏好
-  if (
-    window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  ) {
-    darkMode.value = true;
-    document.documentElement.classList.add("dark");
+  // 优先使用本地存储的主题偏好，如果没有则默认白天模式
+  const savedDarkMode = localStorage.getItem("darkMode");
+  if (savedDarkMode === null) {
+    // 没有保存的偏好，默认白天模式
+    darkMode.value = false;
+    localStorage.setItem("darkMode", "false");
+  } else {
+    // 应用保存的偏好
+    darkMode.value = savedDarkMode === "true";
+    if (darkMode.value) {
+      document.documentElement.classList.add("dark");
+    }
   }
 
   resizeObserver.value = new ResizeObserver(() => {});

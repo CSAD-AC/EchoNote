@@ -15,6 +15,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import uno.zhuchen.echonotejava.Mapper.UserMapper;
 import uno.zhuchen.echonotejava.Project.Result;
 import uno.zhuchen.echonotejava.Project.User.LoginRequest;
+import uno.zhuchen.echonotejava.Project.User.Role;
+import uno.zhuchen.echonotejava.Repository.UserRepository;
 import uno.zhuchen.echonotejava.Utils.JwtUtil;
 
 import java.io.IOException;
@@ -25,10 +27,10 @@ import java.util.Map;
 public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 
     private final AuthenticationManager authenticationManager;
-    private UserMapper userMapper;
+    private UserRepository userRepository;
     @Autowired
-    public void setUserMapper(UserMapper userMapper) {
-        this.userMapper = userMapper;
+    public void setUserMapper(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     public JwtAuthenticationFilter(AuthenticationManager authenticationManager) {
@@ -79,14 +81,20 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         log.info("用户 {} 登录成功", user.getUsername());
 
         Map<String, Object> claims = new HashMap<>(Map.of("userName", user.getUsername()));
-        claims.put("userId", userMapper.findByUsername(user.getUsername()).getId());
+        claims.put("userId", userRepository.findUserAndRolesByUsername(user.getUsername()).getId());
         String token = JwtUtil.generateToken(claims);
         // 将令牌添加到响应头
         response.addHeader("Authorization", "Bearer " + token);
 
         // 返回JSON响应
-        Map<String, String> data = new HashMap<>();
+        Map<String, Object> data = new HashMap<>();
         data.put("token", token);
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("id", userRepository.findUserAndRolesByUsername(user.getUsername()).getId());
+        userInfo.put("userName", user.getUsername());
+        userInfo.put("name", userRepository.findUserAndRolesByUsername(user.getUsername()).getName());
+        userInfo.put("role", userRepository.findUserAndRolesByUsername(user.getUsername()).getRoles().stream().map(Role::getName).toList());
+        data.put("userInfo", userInfo);
         Result result = Result.success("登录成功", data);
         response.setContentType("application/json");
         new ObjectMapper().writeValue(response.getOutputStream(), result);

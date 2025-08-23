@@ -10,6 +10,8 @@ import uno.zhuchen.echonotejava.Repository.CapsulesRepository;
 import uno.zhuchen.echonotejava.Service.CapsulesService;
 import uno.zhuchen.echonotejava.Utils.JwtUtil;
 
+import java.util.Objects;
+
 @Service
 @Slf4j
 public class CapsulesServiceImpl implements CapsulesService {
@@ -37,20 +39,12 @@ public class CapsulesServiceImpl implements CapsulesService {
     }
 
     @Override
-    public Result getCapsules(Capsules capsules, HttpServletRequest request) {
-        if(capsules.getUserId() != null && capsules.getId() != null) {
+    public Result getCapsule(Integer id, HttpServletRequest request) {
+        if(id == null) {
             log.error("查询胶囊参数错误");
             return Result.error("查询参数错误");
         }
-        if(capsules.getUserId() != null) {
-            if(!capsules.getUserId().toString().equals(JwtUtil.getUserIdFromRequest(request))) {
-                log.error("身份验证失败, 查询失败");
-                return Result.error("身份验证失败, 查询失败");
-            }
-            return Result.success("查询成功", capsulesRepository.getCapsulesByUserId(capsules.getUserId()));
-        }
-
-        Capsules capsule = capsulesRepository.getCapsuleById(capsules.getId());
+        Capsules capsule = capsulesRepository.getCapsuleById(id);
         if(capsule == null) {
             log.error("查询胶囊不存在");
             return Result.error("查询胶囊不存在");
@@ -63,6 +57,33 @@ public class CapsulesServiceImpl implements CapsulesService {
     }
 
     @Override
+    public Result getCapsulesForUser(HttpServletRequest request) {
+        Integer userId = Integer.parseInt(Objects.requireNonNull(JwtUtil.getUserIdFromRequest(request)));
+        return Result.success("查询成功", capsulesRepository.getCapsulesByUserId(userId));
+    }
+
+    @Override
+    public Result getPreMood() {
+        return Result.success("查询成功", capsulesRepository.getPreMoods());
+    }
+
+    @Override
+    @Transactional
+    public Result deleteCapsuleById(Integer id, HttpServletRequest request) {
+        Capsules capsule = capsulesRepository.getCapsuleById(id);
+        if(capsule == null) {
+            log.error("胶囊不存在");
+            return Result.error("胶囊不存在");
+        }
+        if(!capsule.getUserId().toString().equals(JwtUtil.getUserIdFromRequest(request))) {
+            log.error("身份验证失败, 删除失败");
+            return Result.error("身份验证失败, 删除失败");
+        }
+        capsulesRepository.deleteCapsuleById(id);
+        return Result.success("删除成功");
+    }
+
+    @Override
     @Transactional
     public Result updateCapsulesById(Capsules capsules, HttpServletRequest request) {
         Capsules capsule = capsulesRepository.getCapsuleById(capsules.getId());
@@ -72,7 +93,7 @@ public class CapsulesServiceImpl implements CapsulesService {
         }
         if(!capsule.getUserId().toString().equals(JwtUtil.getUserIdFromRequest(request))) {
             log.error("身份验证失败, 删除失败");
-            return Result.error("身份验证失败, 删除失败");
+            return Result.error("身份验证失败, 更新失败");
         }
         capsulesRepository.updateCapsule(capsules);
         return Result.success("修改成功", capsulesRepository.getCapsuleById(capsules.getId()));

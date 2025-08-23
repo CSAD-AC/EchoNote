@@ -82,13 +82,15 @@
 // 导入所需图标
 import { UserFilled, MessageFilled, Lock } from "@element-plus/icons-vue";
 // 导入Element Plus组件
-import { ElForm, ElFormItem, ElInput, ElButton } from "element-plus";
+import { ElForm, ElFormItem, ElInput, ElButton, ElMessage } from "element-plus";
 // 导入公共布局组件
 import Layout from "../components/Layout.vue";
 // 导入路由
 import { useRouter } from "vue-router";
 // 导入Vue hooks
 import { ref, reactive } from "vue";
+// 导入注册API
+import { register } from "@/utils/api";
 
 // 初始化路由
 const router = useRouter();
@@ -145,17 +147,46 @@ const loading = ref(false);
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 
+function reflushRegisterForm() {
+  formData.userName = "";
+  formData.email = "";
+  formData.password = "";
+  formData.confirmPassword = "";
+}
 // 注册处理函数
 function handleRegister() {
   registerForm.value.validate((valid) => {
     if (valid) {
-      // 模拟注册请求
+      // 准备注册数据
+      const registerData = {
+        userName: formData.userName,
+        password: formData.password,
+        email: formData.email,
+      };
+
+      // 发送注册请求
       loading.value = true;
-      setTimeout(() => {
-        loading.value = false;
-        // 注册成功，跳转到登录页
-        router.push({ path: "/login", query: { registered: true } });
-      }, 1500);
+      register(registerData)
+        .then((response) => {
+          loading.value = false;
+          if (response.code === 200) {
+            ElMessage.success(response.message || "注册成功");
+            // 注册成功，跳转到登录页
+            router.push({
+              path: "/login",
+              query: { registered: true, userName: formData.userName },
+            });
+          } else {
+            reflushRegisterForm();
+            ElMessage.error(response.message || "注册失败，请重试");
+          }
+        })
+        .catch((error) => {
+          loading.value = false;
+          reflushRegisterForm();
+          ElMessage.error("网络错误，请稍后重试");
+          console.error("注册失败:", error);
+        });
     }
   });
 }

@@ -32,7 +32,7 @@
             ></el-input>
           </el-form-item>
           <el-form-item class="remember-me">
-            <el-checkbox v-model="formData.rememberMe">记住我</el-checkbox>
+            <el-checkbox v-model="rememberMe">记住我</el-checkbox>
             <router-link to="/forgot-password" class="forgot-password link"
               >忘记密码?</router-link
             >
@@ -75,23 +75,29 @@ import {
   ElInput,
   ElButton,
   ElCheckbox,
+  ElMessage,
 } from "element-plus";
 // 导入公共布局组件
 import Layout from "../components/Layout.vue";
 // 导入路由
 import { useRouter, useRoute } from "vue-router";
 // 导入Vue hooks
-import { ref, reactive } from "vue";
+import { ref, reactive, onMounted } from "vue";
+
+// 导入登录API
+import { login } from "@/utils/api";
 
 // 初始化路由
 const router = useRouter();
 const route = useRoute();
 
+// 记住我状态
+const rememberMe = ref(false);
+
 // 表单数据
 const formData = reactive({
   userName: "",
   password: "",
-  rememberMe: false,
 });
 
 // 表单规则
@@ -118,36 +124,91 @@ const showPassword = ref(false);
 // 登录处理函数
 /**
  * 处理用户登录逻辑
- * 验证表单后模拟登录请求，成功后存储用户信息并跳转
+ * 验证表单后调用登录API，成功后存储用户信息和token并跳转
+ * 根据rememberMe状态存储或清除本地凭证
  */
 function handleLogin() {
   loginForm.value.validate((valid) => {
     if (valid) {
-      // 模拟登录请求
+      // 调用登录API
       loading.value = true;
-      setTimeout(() => {
-        loading.value = false;
-        // 模拟获取用户信息(实际应用中应从服务器返回)
-        const userInfo = {
-          userName: formData.userName,
-          email: `${formData.userName}@example.com`, // 实际应用中应从服务器获取
-        };
+      login(formData)
+        .then((response) => {
+          loading.value = false;
+          const { code, message, data } = response;
+          if (code === 200) {
+            // 登录成功，存储用户信息和token
+            const { userInfo, token } = data;
+            localStorage.setItem("userInfo", JSON.stringify(userInfo));
+            localStorage.setItem("token", token);
 
-        // 存储用户信息到本地存储
-        localStorage.setItem("userInfo", JSON.stringify(userInfo));
+            // 根据rememberMe状态处理本地凭证
+            if (rememberMe.value) {
+              // 存储账号密码
+              localStorage.setItem(
+                "rememberedCredentials",
+                JSON.stringify({
+                  userName: formData.userName,
+                  password: formData.password,
+                })
+              );
+            } else {
+              // 清除本地存储的凭证
+              localStorage.removeItem("rememberedCredentials");
+            }
 
-        // 登录成功，跳转到首页
-        router.push("/");
-      }, 1500);
+            // 显示成功消息
+            ElMessage.success(message);
+
+            // 跳转到首页
+            router.push("/");
+          } else {
+            // 显示失败消息
+            ElMessage.error(message || "登录失败");
+          }
+        })
+        .catch((error) => {
+          loading.value = false;
+          console.error("登录请求失败:", error);
+          if (error.response.status === 401) {
+            ElMessage.error("用户名或密码错误");
+          } else {
+            ElMessage.error("网络错误，请稍后重试");
+          }
+        });
     }
   });
 }
 
-// 检查是否有注册成功的提示
-if (route.query.registered) {
-  // 这里可以添加注册成功的提示
-  console.log("注册成功，请登录");
+/**
+ * 从本地存储加载记住的凭证
+ */
+function loadRememberedCredentials() {
+  const storedCredentials = localStorage.getItem("rememberedCredentials");
+  if (storedCredentials) {
+    try {
+      const { userName, password } = JSON.parse(storedCredentials);
+      formData.userName = userName;
+      formData.password = password;
+      rememberMe.value = true;
+    } catch (error) {
+      console.error("解析记住的凭证失败:", error);
+      localStorage.removeItem("rememberedCredentials");
+    }
+  }
 }
+
+// 组件挂载时执行
+onMounted(() => {
+  // 加载记住的凭证
+  loadRememberedCredentials();
+
+  // 检查是否有注册成功的提示
+  if (route.query.registered) {
+    // 显示注册成功的提示
+    ElMessage.success("注册成功，请登录");
+  }
+});
 </script>
 
 <style scoped>

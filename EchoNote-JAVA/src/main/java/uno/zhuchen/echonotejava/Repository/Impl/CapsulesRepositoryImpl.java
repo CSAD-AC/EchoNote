@@ -27,10 +27,12 @@ public class CapsulesRepositoryImpl implements CapsulesRepository {
         capsulesMapper.addCapsules(capsule);
         // 添加胶囊-心情关联表数据
         capsule.getMoods().forEach(mood -> capsulesMapper.addMoodForCapsules(capsule.getId(), mood.getId()));
-        Mood newMood = new Mood(null, capsule.getNewMood().getName(), null);
-        moodsMapper.addMood(newMood);
-        capsulesMapper.addMoodForCapsules(capsule.getId(), newMood.getId());
-
+        // 添加新心情数据
+        if(capsule.getNewMood() != null) {
+            Mood newMood = new Mood(null, capsule.getNewMood().getName(), null);
+            moodsMapper.addMood(newMood);
+            capsulesMapper.addMoodForCapsules(capsule.getId(), newMood.getId());
+        }
     }
 
     @Override
@@ -44,6 +46,8 @@ public class CapsulesRepositoryImpl implements CapsulesRepository {
         });
         return capsules;
     }
+
+
 
     @Override
     // 用于数据回显
@@ -61,5 +65,26 @@ public class CapsulesRepositoryImpl implements CapsulesRepository {
     @Transactional
     public void updateCapsule(Capsules capsule) {
         capsulesMapper.updateCapsulesById(capsule);
+        capsulesMapper.deleteMoodByCapsules(capsule);
+        if(capsule.getNewMood() != null) {
+            Mood newMood = new Mood(null, capsule.getNewMood().getName(), null);
+            moodsMapper.addMood(newMood);
+            capsulesMapper.addMoodForCapsules(capsule.getId(), newMood.getId());
+        }
+        if (capsule.getMoods() != null && !capsule.getMoods().isEmpty()) {
+            capsulesMapper.addMoodForCapsule(capsule);
+        }
+    }
+
+    @Override
+    public List<Mood> getPreMoods() {
+        return moodsMapper.getPreMoods();
+    }
+
+    @Override
+    @Transactional
+    public void deleteCapsuleById(Integer id) {
+        capsulesMapper.deleteMoodByCapsulesId(id);
+        capsulesMapper.deleteCapsulesById(id);
     }
 }

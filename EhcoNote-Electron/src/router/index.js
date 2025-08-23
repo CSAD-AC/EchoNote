@@ -2,11 +2,9 @@ import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import LoginView from "../views/LoginView.vue";
 import RegisterView from "../views/RegisterView.vue";
+import { ElMessage } from "element-plus";
 // 忘记密码页面路由占位符
-const ForgotPasswordView = () =>
-  import(
-    /* webpackChunkName: "forgot-password" */ "../views/ForgotPasswordView.vue"
-  );
+const ForgotPasswordView = () => import("../views/ForgotPasswordView.vue");
 
 const routes = [
   {
@@ -59,6 +57,28 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes,
+});
+
+// 无需权限的页面白名单
+const whiteList = ["/", "/login", "/register", "/forgot-password", "/about"];
+
+// 导航守卫
+router.beforeEach((to, from, next) => {
+  // 检查是否在白名单中
+  if (whiteList.includes(to.path)) {
+    return next();
+  }
+
+  // 检查是否有token
+  const token = localStorage.getItem("token");
+  if (!token) {
+    // 没有token，跳转到登录页
+    ElMessage.warning("请先登录");
+    return next("/login");
+  }
+
+  // 有token，继续访问
+  next();
 });
 
 export default router;

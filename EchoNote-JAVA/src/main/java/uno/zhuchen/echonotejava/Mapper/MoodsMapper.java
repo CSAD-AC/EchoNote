@@ -4,7 +4,6 @@ import org.apache.ibatis.annotations.Mapper;
 import uno.zhuchen.echonotejava.Project.Capsules.Mood;
 
 import java.util.List;
-import java.util.Set;
 
 @Mapper
 public interface MoodsMapper {
@@ -14,5 +13,5 @@ public interface MoodsMapper {
     void deleteMoodById(Integer id);
     List<Mood> findAllMoodByCapsulesId(Integer id);
     Mood findMoodById(Integer id);
-    Set<Mood> getPreMoods();
+    List<Mood> getPreMoods();
 }

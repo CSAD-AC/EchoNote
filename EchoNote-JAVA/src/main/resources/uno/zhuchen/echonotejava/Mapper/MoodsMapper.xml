@@ -29,7 +29,7 @@
         SELECT id, name, createTime FROM moods WHERE id = #{id}
     </select>
     <select id="getPreMoods" resultType="uno.zhuchen.echonotejava.Project.Capsules.Mood">
-        SELECT id, name, createTime FROM moods WHERE id <![CDATA[<=]]> 40
+        SELECT id, name, createTime FROM moods WHERE id <![CDATA[<=]]> 40 ORDER BY id
     </select>
 
 </mapper>
