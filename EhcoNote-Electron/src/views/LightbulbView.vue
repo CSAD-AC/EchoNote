@@ -2,30 +2,50 @@
   <Layout>
     <section class="feature-content">
       <div class="feature-header">
-        <h2>灵光胶囊</h2>
-        <p>捕捉瞬时闪现的灵感</p>
-        <div class="status-tabs">
-          <div
-            :class="{ active: currentTab === 'pending' }"
-            @click="switchTab('pending')"
-          >
-            未处理
+        <div class="header-main">
+          <div class="title-section">
+            <h2 class="feature-title">✨ 时光胶囊</h2>
+            <p class="feature-subtitle">
+              捕捉瞬时闪现的灵感，记录珍贵的思维火花
+            </p>
           </div>
-          <div
-            :class="{ active: currentTab === 'completed' }"
-            @click="switchTab('completed')"
+          <el-button
+            @click="showAddForm"
+            class="add-button"
+            type="primary"
+            icon="Plus"
+            size="large"
+            round
           >
-            已处理
+            <span>✨ 添加灵感</span>
+          </el-button>
+        </div>
+        <div class="status-tabs-container">
+          <div class="status-tabs">
+            <div
+              :class="{ active: currentTab === 'pending' }"
+              @click="switchTab('pending')"
+              class="tab-item"
+            >
+              <span class="tab-icon">⏳</span>
+              <span>未处理</span>
+              <span class="tab-count"
+                >({{ bulbs.filter((b) => !b.status).length }})</span
+              >
+            </div>
+            <div
+              :class="{ active: currentTab === 'completed' }"
+              @click="switchTab('completed')"
+              class="tab-item"
+            >
+              <span class="tab-icon">✅</span>
+              <span>已处理</span>
+              <span class="tab-count"
+                >({{ bulbs.filter((b) => b.status).length }})</span
+              >
+            </div>
           </div>
         </div>
-        <el-button
-          @click="showAddForm"
-          class="add-button"
-          type="primary"
-          icon="Plus"
-        >
-          添加灵感
-        </el-button>
       </div>
 
       <el-dialog
@@ -53,7 +73,7 @@
                 placeholder="输入心情名称或选择"
                 style="width: 100%"
                 @focus="showMoodSelect = true"
-                @blur="handleMoodInputBlur"
+                @blur="showMoodSelect = false"
               ></el-input>
             </div>
             <div v-if="showMoodSelect" class="mood-select-dropdown expanded">
@@ -100,7 +120,31 @@
 
       <div class="bulb-list">
         <div v-if="filteredBulbs.length === 0" class="empty-state">
-          <p>暂无灵感记录，点击右上角按钮添加</p>
+          <div class="empty-illustration">
+            <div class="empty-bulb-icon">💡</div>
+          </div>
+          <h3 class="empty-title">
+            {{
+              currentTab === "pending" ? "暂无未处理的灵感" : "暂无已处理的灵感"
+            }}
+          </h3>
+          <p class="empty-description">
+            {{
+              currentTab === "pending"
+                ? "点击上方“✨ 添加灵感”按钮，开始记录您的第一个灵感瞬间"
+                : "当您处理完成一些灵感后，它们将会在这里显示"
+            }}
+          </p>
+          <el-button
+            v-if="currentTab === 'pending'"
+            @click="showAddForm"
+            type="primary"
+            size="large"
+            round
+            class="empty-action-btn"
+          >
+            <span>✨ 立即添加</span>
+          </el-button>
         </div>
         <div
           v-else
@@ -123,18 +167,14 @@
                     icon="Check"
                     type="success"
                     @click="markAsSolved(bulb.id)"
-                  >
-                    已解决
-                  </el-button>
+                  />
                   <el-button
                     v-if="bulb.status"
                     size="default"
                     icon="CircleClose"
                     type="warning"
                     @click="markAsPending(bulb.id)"
-                  >
-                    未处理
-                  </el-button>
+                  />
                   <el-button
                     size="default"
                     icon="Edit"
@@ -171,7 +211,7 @@
                 </template>
               </div>
               <div class="card-time">
-                <span>{{ formatDate(bulb.updateTime) }}</span>
+                <span>{{ formatDate(bulb.createTime) }}</span>
               </div>
             </div>
           </el-card>
@@ -230,37 +270,24 @@ onMounted(async () => {
       return;
     }
 
-    const response = await getCapsulesByUserId(userId);
-    bulbs.value = response.data || [];
+    // 同时获取胶囊数据和预设心情
+    const [capsulesRes, moodsRes] = await Promise.all([
+      getCapsulesByUserId(userId),
+      getPreMoods(),
+    ]);
+
+    bulbs.value = capsulesRes.data || [];
+    preMoods.value = moodsRes.data || [];
     filterBulbs();
   } catch (error) {
-    console.error("获取胶囊数据失败:", error);
-    ElMessage.error("获取胶囊数据失败，请重试");
+    console.error("初始化失败:", error);
+    ElMessage.error("初始化失败，请重试");
   }
 });
-
-const fetchPreMoods = async () => {
-  try {
-    const response = await getPreMoods();
-    preMoods.value = response.data || [];
-  } catch (error) {
-    console.error("获取预设心情失败:", error);
-    ElMessage.error("获取预设心情失败，请重试");
-  }
-};
-onMounted(fetchPreMoods);
 
 function switchTab(tab) {
   currentTab.value = tab;
   filterBulbs();
-
-  const bulbGrid = document.querySelector(".bulb-grid");
-  if (bulbGrid) {
-    bulbGrid.style.opacity = "0";
-    setTimeout(() => {
-      bulbGrid.style.opacity = "1";
-    }, 300);
-  }
 }
 
 function filterBulbs() {
@@ -271,57 +298,37 @@ function filterBulbs() {
   }
 }
 
-async function markAsSolved(bulbId) {
+async function toggleStatus(bulbId, newStatus) {
   try {
     await changeCapsulesStatusById({ id: bulbId });
     const index = bulbs.value.findIndex((bulb) => bulb.id === bulbId);
     if (index !== -1) {
-      bulbs.value[index].status = true;
+      bulbs.value[index].status = newStatus;
       filterBulbs();
-      ElMessage.success("已标记为已解决");
+      ElMessage.success(newStatus ? "已标记为已解决" : "已标记为未处理");
     }
   } catch (error) {
-    console.error("标记胶囊为已解决失败:", error);
+    console.error("更新状态失败:", error);
     ElMessage.error("操作失败，请重试");
   }
 }
 
-async function markAsPending(bulbId) {
-  try {
-    await changeCapsulesStatusById({ id: bulbId });
-    const index = bulbs.value.findIndex((bulb) => bulb.id === bulbId);
-    if (index !== -1) {
-      bulbs.value[index].status = false;
-      filterBulbs();
-      ElMessage.success("已标记为未处理");
-    }
-  } catch (error) {
-    console.error("标记胶囊为未处理失败:", error);
-    ElMessage.error("操作失败，请重试");
-  }
-}
-
-const handleMoodInputBlur = () => {
-  setTimeout(() => {
-    showMoodSelect.value = false;
-  }, 200);
-};
+const markAsSolved = (id) => toggleStatus(id, true);
+const markAsPending = (id) => toggleStatus(id, false);
 
 function addPresetMood(mood) {
-  const exists = currentBulb.value.moods.some((m) => m.name === mood.name);
-  if (!exists) {
+  if (!currentBulb.value.moods.some((m) => m.name === mood.name)) {
     currentBulb.value.moods.push({
       ...mood,
       createTime: new Date().toISOString(),
     });
-    currentBulb.value.newMood = null;
   }
+  currentBulb.value.newMood = null;
   showMoodSelect.value = false;
 }
 
 function removeMood(index) {
   currentBulb.value.moods.splice(index, 1);
-  currentBulb.value.newMood = null;
 }
 
 function showAddForm() {
@@ -493,126 +500,394 @@ function formatDate(dateString) {
 
 /* 功能内容区域样式 */
 .feature-content {
-  padding: 3rem 2rem;
-  max-width: 1200px;
+  padding: 2rem;
+  max-width: 1400px;
   margin: 0 auto;
   flex: 1;
+  background: linear-gradient(
+    135deg,
+    rgba(66, 185, 131, 0.02) 0%,
+    rgba(255, 255, 255, 0.8) 100%
+  );
+  min-height: calc(100vh - 120px);
+}
+
+.dark .feature-content {
+  background: linear-gradient(
+    135deg,
+    rgba(76, 217, 100, 0.05) 0%,
+    rgba(31, 41, 55, 0.8) 100%
+  );
 }
 
 .feature-header {
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.header-main {
   display: flex;
-  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-  text-align: center;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.title-section {
+  text-align: left;
+  flex: 1;
+}
+
+.feature-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #42b983, #35495e, #667eea);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 2px 10px rgba(66, 185, 131, 0.3);
+}
+
+.dark .feature-title {
+  background: linear-gradient(135deg, #4cd964, #5ac8fa, #a855f7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 2px 10px rgba(76, 217, 100, 0.4);
+}
+
+.feature-subtitle {
+  font-size: 1.1rem;
+  color: #666;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.dark .feature-subtitle {
+  color: #9ca3af;
+}
+
+.add-button {
+  background: linear-gradient(135deg, #42b983, #35495e);
+  border: none;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(66, 185, 131, 0.3);
+  transition: all 0.3s ease;
+  transform: translateY(0);
+}
+
+.add-button:hover {
+  background: linear-gradient(135deg, #369870, #2c3e50);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(66, 185, 131, 0.4);
+}
+
+.dark .add-button {
+  background: linear-gradient(135deg, #4cd964, #5ac8fa);
+}
+
+.dark .add-button:hover {
+  background: linear-gradient(135deg, #40c057, #339af0);
+  box-shadow: 0 6px 20px rgba(76, 217, 100, 0.4);
+}
+
+.status-tabs-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 /* 状态标签样式 */
 .status-tabs {
   display: flex;
-  margin-top: 1rem;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50px;
+  padding: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
   overflow: hidden;
-  background-color: #f5f5f5;
 }
 
-.status-tabs > div {
-  padding: 0.5rem 1rem;
+.dark .status-tabs {
+  background: rgba(31, 41, 55, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab-item {
+  padding: 12px 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  border-radius: 45px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 2;
+  color: #666;
+  background: transparent;
+  font-size: 0.95rem;
 }
 
-.status-tabs > div.active {
-  background-color: #4096ff;
+.tab-item.active {
+  background: linear-gradient(135deg, #42b983, #369870);
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(66, 185, 131, 0.3);
+}
+
+.dark .tab-item {
+  color: #9ca3af;
+}
+
+.dark .tab-item.active {
+  background: linear-gradient(135deg, #4cd964, #40c057);
   color: white;
 }
 
-/* 标签切换动画 */
-.bulb-grid {
-  transition: opacity 0.3s ease;
+.tab-icon {
+  font-size: 1.1rem;
 }
 
-/* 解决按钮样式调整 */
-.el-button--success {
-  margin-right: 0.5rem;
-}
-
-.feature-header h2 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-  color: #42b983;
-}
-
-.dark .feature-header p {
-  color: #e1e9e3;
-}
-
-.add-button {
-  margin-top: 1rem;
+.tab-count {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  font-weight: 400;
 }
 
 /* 胶囊列表样式 */
 .bulb-list {
-  margin-top: 2rem;
+  margin-top: 3rem;
 }
 
 .bulb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 2rem;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 美化胶囊样式 */
+.bulb-card {
+  border-radius: 20px !important;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none !important;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.7) 100%
+  );
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(66, 185, 131, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+}
+
+.bulb-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(66, 185, 131, 0.05) 0%,
+    rgba(53, 73, 94, 0.05) 50%,
+    rgba(102, 126, 234, 0.05) 100%
+  );
+  border-radius: 20px;
+  z-index: 0;
+  transition: opacity 0.3s ease;
+  opacity: 0;
+}
+
+.bulb-card:hover::before {
+  opacity: 1;
+}
+
+.dark .bulb-card {
+  background: linear-gradient(
+    145deg,
+    rgba(31, 41, 55, 0.9) 0%,
+    rgba(31, 41, 55, 0.7) 100%
+  );
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(76, 217, 100, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dark .bulb-card::before {
+  background: linear-gradient(
+    145deg,
+    rgba(76, 217, 100, 0.08) 0%,
+    rgba(90, 200, 250, 0.08) 50%,
+    rgba(168, 85, 247, 0.08) 100%
+  );
+}
+
+.bulb-card:hover {
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15),
+    0 8px 24px rgba(66, 185, 131, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.dark .bulb-card:hover {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(76, 217, 100, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+  background: linear-gradient(
+    135deg,
+    rgba(66, 185, 131, 0.1) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  border-bottom: 1px solid rgba(66, 185, 131, 0.1);
+  position: relative;
+  z-index: 1;
+}
+
+.dark .card-header {
+  background: linear-gradient(
+    135deg,
+    rgba(76, 217, 100, 0.1) 0%,
+    rgba(31, 41, 55, 0.1) 100%
+  );
+  border-bottom: 1px solid rgba(76, 217, 100, 0.1);
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #2c3e50;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.dark .card-header h3 {
+  color: #f3f4f6;
 }
 
 .card-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+.card-actions .el-button {
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.card-actions .el-button:hover {
+  transform: scale(1.1) rotate(5deg);
 }
 
 .card-content {
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 0.5rem 0;
+  position: relative;
+  z-index: 1;
 }
 
 .content-preview {
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.6;
   word-break: break-word;
+  color: #4b5563;
+  font-size: 0.95rem;
+}
+
+.dark .content-preview {
+  color: #d1d5db;
 }
 
 .card-location {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   color: #42b983;
   font-size: 0.9rem;
+  font-weight: 500;
+  padding: 8px 12px;
+  background: rgba(66, 185, 131, 0.1);
+  border-radius: 50px;
+  width: fit-content;
+}
+
+.dark .card-location {
+  color: #4cd964;
+  background: rgba(76, 217, 100, 0.1);
 }
 
 .card-moods {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 8px;
+  margin-top: 1rem;
+  padding: 12px;
+  background: rgba(66, 185, 131, 0.05);
+  border-radius: 12px;
+  border: 1px dashed rgba(66, 185, 131, 0.2);
+}
+
+.dark .card-moods {
+  background: rgba(76, 217, 100, 0.05);
+  border: 1px dashed rgba(76, 217, 100, 0.2);
 }
 
 .mood-label {
-  font-weight: 500;
-  color: #666;
+  font-weight: 600;
+  color: #42b983;
+  font-size: 0.9rem;
+  margin-right: 8px;
+}
+
+.dark .mood-label {
+  color: #4cd964;
 }
 
 .card-time {
-  font-size: 0.8rem;
-  color: #999;
+  font-size: 0.85rem;
+  color: #9ca3af;
   text-align: right;
+  font-style: italic;
+  margin-top: auto;
+  padding: 8px 12px;
+  background: rgba(156, 163, 175, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid #42b983;
+}
+
+.dark .card-time {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+  border-left-color: #4cd964;
 }
 
 /* 空状态样式 */
@@ -621,93 +896,221 @@ function formatDate(dateString) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem;
+  padding: 4rem 2rem;
   text-align: center;
-  color: #999;
+  background: linear-gradient(
+    135deg,
+    rgba(66, 185, 131, 0.05) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  border-radius: 20px;
+  border: 2px dashed rgba(66, 185, 131, 0.2);
+  margin: 2rem 0;
+  animation: fadeIn 0.6s ease;
 }
 
-/* 美化心情标签样式 */
+.dark .empty-state {
+  background: linear-gradient(
+    135deg,
+    rgba(76, 217, 100, 0.05) 0%,
+    rgba(31, 41, 55, 0.05) 100%
+  );
+  border-color: rgba(76, 217, 100, 0.2);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.empty-illustration {
+  margin-bottom: 2rem;
+}
+
+.empty-bulb-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.empty-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #42b983;
+  margin-bottom: 1rem;
+}
+
+.dark .empty-title {
+  color: #4cd964;
+}
+
+.empty-description {
+  font-size: 1rem;
+  color: #6b7280;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  max-width: 400px;
+}
+
+.dark .empty-description {
+  color: #9ca3af;
+}
+
+.empty-action-btn {
+  background: linear-gradient(135deg, #42b983, #35495e);
+  border: none;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(66, 185, 131, 0.3);
+  transition: all 0.3s ease;
+}
+
+.empty-action-btn:hover {
+  background: linear-gradient(135deg, #369870, #2c3e50);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(66, 185, 131, 0.4);
+}
+
+.dark .empty-action-btn {
+  background: linear-gradient(135deg, #4cd964, #5ac8fa);
+}
+
+.dark .empty-action-btn:hover {
+  background: linear-gradient(135deg, #40c057, #339af0);
+  box-shadow: 0 6px 20px rgba(76, 217, 100, 0.4);
+}
+
+/* 心情标签样式 */
 .card-moods .el-tag {
-  border-radius: 16px !important;
-  padding: 4px 12px;
+  border-radius: 20px !important;
+  padding: 6px 14px;
   font-size: 12px;
-  height: 24px;
+  height: 28px;
   line-height: 16px;
-  transition: all 0.2s;
-  margin-right: 6px;
-  margin-bottom: 6px;
+  transition: transform 0.3s ease;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .card-moods .el-tag:hover {
-  transform: scale(1.05);
+  transform: scale(1.05) translateY(-1px);
 }
 
-/* 自定义心情文字样式 */
 .text-mood {
   color: #fff;
-  background-color: #409eff;
-  padding: 2px 8px;
-  border-radius: 4px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 6px 14px;
+  border-radius: 20px;
   font-size: 12px;
-  margin-right: 6px;
-  margin-bottom: 6px;
+  font-weight: 500;
+  margin-right: 8px;
+  margin-bottom: 8px;
   display: inline-block;
-  border-radius: 4px; /* 确保是方形 */
+  transition: transform 0.3s ease;
 }
 
-/* 暗黑模式下自定义心情文字样式 */
+.text-mood:hover {
+  transform: scale(1.05) translateY(-1px);
+}
+
 .dark .text-mood {
-  color: #fff;
-  background-color: #2a62a9;
-  border: 1px solid #409eff;
+  background: linear-gradient(135deg, #4c6ef5 0%, #9775fa 100%);
 }
 
 .mood-input-container {
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
   position: relative;
 }
 
 .added-moods {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 8px;
+  margin-top: 1rem;
+  padding: 12px;
+  background: rgba(66, 185, 131, 0.05);
+  border-radius: 12px;
+  border: 1px dashed rgba(66, 185, 131, 0.2);
+  min-height: 44px;
+  align-items: center;
+}
+
+.dark .added-moods {
+  background: rgba(76, 217, 100, 0.05);
+  border: 1px dashed rgba(76, 217, 100, 0.2);
 }
 
 .mood-select-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
-  width: 300px;
-  background-color: white;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  z-index: 100;
-  padding: 10px;
-  margin-top: 5px;
+  width: 100%;
+  max-width: 450px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(66, 185, 131, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  padding: 16px;
+  margin-top: 8px;
+  animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .mood-select-header {
-  font-weight: bold;
-  margin-bottom: 8px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #eee;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(66, 185, 131, 0.2);
+  color: #42b983;
 }
 
 /* 暗黑模式样式适配 */
 .dark .mood-select-dropdown {
-  background-color: #1f2937;
-  border-color: #374151;
+  background: rgba(31, 41, 55, 0.95);
+  border: 1px solid rgba(76, 217, 100, 0.2);
   color: #f3f4f6;
 }
 
 .dark .mood-select-header {
-  border-bottom-color: #374151;
+  border-bottom-color: rgba(76, 217, 100, 0.2);
+  color: #4cd964;
 }
 
 .dark .selectable-mood:hover {
-  background-color: #374151;
+  background-color: rgba(76, 217, 100, 0.1);
+  transform: scale(1.05);
 }
 
 .dark .card-content {
@@ -722,31 +1125,57 @@ function formatDate(dateString) {
 .mood-select-items {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  max-height: 200px;
+  gap: 10px;
+  max-height: 280px;
   overflow-y: auto;
+  padding: 8px 0;
 }
 
 .mood-select-dropdown.expanded {
-  padding: 15px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
 }
 
 .mood-select-items.expanded {
   gap: 12px;
-  max-height: 300px;
-  padding: 10px 0;
+  max-height: 320px;
+  padding: 12px 0;
 }
 
 .selectable-mood {
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 20px !important;
+  padding: 8px 16px !important;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.selectable-mood::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.4s ease;
 }
 
 .selectable-mood:hover {
-  transform: scale(1.05);
+  transform: scale(1.08) translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.selectable-mood:hover::before {
+  left: 100%;
 }
 
 /* 美化胶囊样式 */
@@ -1237,5 +1666,204 @@ function formatDate(dateString) {
   background-color: #1a2a33;
   color: #64b5f6;
   border-color: #2d4b53;
+}
+
+/* 美化胶囊卡片样式 */
+.bulb-card {
+  border-radius: 20px !important;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none !important;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.7) 100%
+  );
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(66, 185, 131, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: visible;
+}
+
+.bulb-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(66, 185, 131, 0.05) 0%,
+    rgba(53, 73, 94, 0.05) 50%,
+    rgba(102, 126, 234, 0.05) 100%
+  );
+  border-radius: 20px;
+  z-index: -1;
+  transition: opacity 0.3s ease;
+  opacity: 0;
+}
+
+.bulb-card:hover::before {
+  opacity: 1;
+}
+
+.dark .bulb-card {
+  background: linear-gradient(
+    145deg,
+    rgba(31, 41, 55, 0.9) 0%,
+    rgba(31, 41, 55, 0.7) 100%
+  );
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(76, 217, 100, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dark .bulb-card::before {
+  background: linear-gradient(
+    145deg,
+    rgba(76, 217, 100, 0.08) 0%,
+    rgba(90, 200, 250, 0.08) 50%,
+    rgba(168, 85, 247, 0.08) 100%
+  );
+}
+
+.bulb-card:hover {
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15),
+    0 8px 24px rgba(66, 185, 131, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.dark .bulb-card:hover {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(76, 217, 100, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 暗黑模式适配 */
+.dark-mode {
+  background-color: #1a1a1a;
+  color: #eee;
+}
+
+.dark-mode .header {
+  background-color: #2a2a2a;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.dark .empty-state {
+  color: #ccc5c5;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .feature-content {
+    max-width: 100%;
+    padding: 1.5rem;
+  }
+
+  .bulb-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .feature-content {
+    padding: 1rem;
+  }
+
+  .header-main {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .title-section {
+    text-align: center;
+  }
+
+  .feature-title {
+    font-size: 2rem;
+  }
+
+  .bulb-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .status-tabs {
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .tab-item {
+    flex: 1;
+    justify-content: center;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  .card-header {
+    padding: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .card-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .mood-select-dropdown {
+    width: calc(100vw - 3rem);
+    max-width: none;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 480px) {
+  .feature-content {
+    padding: 0.5rem;
+  }
+
+  .feature-title {
+    font-size: 1.5rem;
+  }
+
+  .feature-subtitle {
+    font-size: 1rem;
+  }
+
+  .tab-item {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  .tab-count {
+    display: none;
+  }
+
+  .card-content {
+    padding: 1rem;
+  }
+
+  .empty-state {
+    padding: 2rem 1rem;
+  }
+
+  .empty-bulb-icon {
+    font-size: 3rem;
+  }
+
+  .empty-title {
+    font-size: 1.2rem;
+  }
+
+  .empty-description {
+    font-size: 0.9rem;
+  }
 }
 </style>

@@ -59,7 +59,7 @@
               </div>
             </div>
             <div class="card-footer">
-              <div class="action-button" data-type="lightbulb">
+              <div class="action-button primary-btn">
                 <span>开始使用</span>
                 <div class="btn-arrow">→</div>
               </div>
@@ -90,7 +90,7 @@
               </div>
             </div>
             <div class="card-footer">
-              <div class="action-button" data-type="writing">
+              <div class="action-button secondary-btn">
                 <span>开始使用</span>
                 <div class="btn-arrow">→</div>
               </div>
@@ -124,7 +124,7 @@
               </div>
             </div>
             <div class="card-footer">
-              <div class="action-button" data-type="fermentation">
+              <div class="action-button tertiary-btn">
                 <span>开始使用</span>
                 <div class="btn-arrow">→</div>
               </div>
@@ -155,7 +155,7 @@
               </div>
             </div>
             <div class="card-footer">
-              <div class="action-button" data-type="maze">
+              <div class="action-button quaternary-btn">
                 <span>开始使用</span>
                 <div class="btn-arrow">→</div>
               </div>
@@ -168,23 +168,38 @@
 </template>
 
 <script setup>
-// 导入组件
+/**
+ * 首页组件
+ * 展示四大功能矩阵，提供精美的用户界面
+ */
+// 导入公共布局组件
 import Layout from "@/components/Layout.vue";
+// 导入所需图标
 import { ChatDotRound, Edit, Plus, Guide } from "@element-plus/icons-vue";
 import { useRouter } from "vue-router";
 
+// 初始化路由
 const router = useRouter();
 
-// 路由映射
-const routes = {
-  capture: "/capture",
-  writing: "/writing",
-  "slow-fermentation": "/slow-fermentation",
-  maze: "/maze",
-};
-
+// 卡片点击跳转函数
 function navigateToFeature(feature) {
-  router.push(routes[feature] || "/");
+  // 根据不同功能跳转到不同页面
+  switch (feature) {
+    case "capture":
+      router.push("/capture");
+      break;
+    case "writing":
+      router.push("/writing");
+      break;
+    case "slow-fermentation":
+      router.push("/slow-fermentation");
+      break;
+    case "maze":
+      router.push("/maze");
+      break;
+    default:
+      router.push("/");
+  }
 }
 </script>
 
@@ -471,6 +486,7 @@ function navigateToFeature(feature) {
 }
 
 .icon-container {
+  position: relative;
   width: 64px;
   height: 64px;
   border-radius: 20px;
@@ -478,27 +494,79 @@ function navigateToFeature(feature) {
   align-items: center;
   justify-content: center;
   color: white;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .icon-container.lightbulb {
   background: linear-gradient(135deg, #ff9f1c, #ffc107);
+  box-shadow: 0 8px 32px rgba(255, 159, 28, 0.3);
 }
 
 .icon-container.edit {
   background: linear-gradient(135deg, #3a86ff, #667eea);
+  box-shadow: 0 8px 32px rgba(58, 134, 255, 0.3);
 }
 
 .icon-container.coffee {
   background: linear-gradient(135deg, #9b5de5, #a855f7);
+  box-shadow: 0 8px 32px rgba(155, 93, 229, 0.3);
 }
 
 .icon-container.puzzle {
   background: linear-gradient(135deg, #f15bb5, #f56565);
+  box-shadow: 0 8px 32px rgba(241, 91, 181, 0.3);
 }
 
 .feature-card:hover .icon-container {
-  transform: scale(1.05);
+  transform: scale(1.1) rotate(5deg);
+}
+
+.icon-glow {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 24px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.lightbulb .icon-glow {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 159, 28, 0.4),
+    rgba(255, 193, 7, 0.4)
+  );
+}
+
+.edit .icon-glow {
+  background: linear-gradient(
+    135deg,
+    rgba(58, 134, 255, 0.4),
+    rgba(102, 126, 234, 0.4)
+  );
+}
+
+.coffee .icon-glow {
+  background: linear-gradient(
+    135deg,
+    rgba(155, 93, 229, 0.4),
+    rgba(168, 85, 247, 0.4)
+  );
+}
+
+.puzzle .icon-glow {
+  background: linear-gradient(
+    135deg,
+    rgba(241, 91, 181, 0.4),
+    rgba(245, 101, 101, 0.4)
+  );
+}
+
+.feature-card:hover .icon-glow {
+  opacity: 1;
 }
 
 .feature-badge {
@@ -579,36 +647,42 @@ function navigateToFeature(feature) {
   transition: all 0.3s ease;
   cursor: pointer;
   border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #ff9f1c, #ffc107);
   color: white;
 }
 
-.action-button[data-type="lightbulb"] {
-  background: linear-gradient(135deg, #ff9f1c, #ffc107);
-}
-
-.action-button[data-type="writing"] {
+.secondary-btn {
   background: linear-gradient(135deg, #3a86ff, #667eea);
+  color: white;
 }
 
-.action-button[data-type="fermentation"] {
+.tertiary-btn {
   background: linear-gradient(135deg, #9b5de5, #a855f7);
+  color: white;
 }
 
-.action-button[data-type="maze"] {
+.quaternary-btn {
   background: linear-gradient(135deg, #f15bb5, #f56565);
+  color: white;
 }
 
 .action-button:hover {
-  transform: translateX(2px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transform: translateX(4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .btn-arrow {
+  font-size: 1.2rem;
   transition: transform 0.3s ease;
 }
 
 .action-button:hover .btn-arrow {
-  transform: translateX(2px);
+  transform: translateX(4px);
 }
 
 /* 暗黑模式 */
