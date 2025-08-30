@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="uno.zhuchen.echonotejava.Mapper.TextMapper">
+
+    <insert id="addText" keyProperty="id" useGeneratedKeys="true">
+        INSERT INTO text(categoryId, currentVersion) VALUES (
+        #{categoryId}, 1)
+    </insert>
+
+    <insert id="addBackupText">
+        INSERT INTO backup_text(textId, version, title, content) VALUES
+        (#{textId}, #{version}, #{title}, #{content})
+    </insert>
+
+    <update id="updateText">
+        UPDATE text
+        <set>
+            <if test="categoryId != null">
+                categoryId = #{categoryId},
+            </if>
+            <if test="currentVersion != null">
+                currentVersion = #{currentVersion},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="softDeleteTextById">
+        UPDATE text
+        <set>
+            status = 0
+        </set>
+        WHERE id = #{id}
+    </delete>
+    <delete id="deleteBackupTextById">
+        DELETE FROM backup_text WHERE id = #{id}
+    </delete>
+
+    <select id="getAllTextsByUserId" resultType="uno.zhuchen.echonotejava.Project.Writing.Text">
+        SELECT t.id, t.categoryId, t.currentVersion, bt.title, bt.content FROM text as t left join category as c on t.categoryId = c.id
+                                                                       left join backup_text as bt on t.id = bt.textId
+                                                        where c.userId = #{userId} AND t.currentVersion = bt.version AND t.status = 1;
+    </select>
+
+    <select id="getTextById" resultType="uno.zhuchen.echonotejava.Project.Writing.Text">
+        SELECT id, categoryId, currentVersion, createTime, updateTime FROM text WHERE id = #{id}
+    </select>
+    <select id="getTextForUpdateById" resultType="uno.zhuchen.echonotejava.Project.Writing.Text">
+        SELECT t.id, t.currentVersion, t.categoryId, bt.title, bt.content FROM text as t
+                                                   left join backup_text as bt on t.id = bt.textId
+        where t.id = #{id} AND (t.currentVersion = bt.version OR bt.version IS NULL)
+    </select>
+
+    <select id="getTextHistory" resultType="uno.zhuchen.echonotejava.Project.Writing.Text">
+        SELECT id, textId, version, title, content, createTime FROM backup_text WHERE textId = #{textId} ORDER BY version
+    </select>
+    <select id="getBackupTextByVersion" resultType="uno.zhuchen.echonotejava.Project.Writing.Text">
+        SELECT id, textId, version, title, content, createTime FROM backup_text WHERE textId = #{textId} AND version = #{version}
+    </select>
+    <select id="getAllTextByCategoryId" resultType="uno.zhuchen.echonotejava.Project.Writing.Text">
+        SELECT id, categoryId, currentVersion, createTime, updateTime FROM text WHERE categoryId = #{categoryId} AND status = 1
+    </select>
+
+
+</mapper>

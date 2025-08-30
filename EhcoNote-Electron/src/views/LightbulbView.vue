@@ -73,7 +73,6 @@
                 placeholder="输入心情名称或选择"
                 style="width: 100%"
                 @focus="showMoodSelect = true"
-                @blur="showMoodSelect = false"
               ></el-input>
             </div>
             <div v-if="showMoodSelect" class="mood-select-dropdown expanded">
@@ -83,11 +82,14 @@
                   v-for="mood in preMoods"
                   :key="mood.id"
                   size="medium"
-                  @click="addPresetMood(mood)"
+                  @mousedown.prevent="addPresetMood(mood)"
                   class="selectable-mood"
                 >
                   {{ mood.name }}
                 </el-tag>
+              </div>
+              <div class="mood-select-close" @click="showMoodSelect = false">
+                <span>关闭</span>
               </div>
             </div>
 
@@ -211,7 +213,7 @@
                 </template>
               </div>
               <div class="card-time">
-                <span>{{ formatDate(bulb.createTime) }}</span>
+                <span>{{ formatDate(bulb.updateTime) }}</span>
               </div>
             </div>
           </el-card>
@@ -1140,6 +1142,43 @@ function formatDate(dateString) {
   gap: 12px;
   max-height: 320px;
   padding: 12px 0;
+}
+
+.mood-select-close {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 0 0;
+  border-top: 1px solid rgba(66, 185, 131, 0.2);
+  margin-top: 12px;
+}
+
+.mood-select-close span {
+  cursor: pointer;
+  color: #42b983;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  background: rgba(66, 185, 131, 0.1);
+}
+
+.mood-select-close span:hover {
+  background: rgba(66, 185, 131, 0.2);
+  transform: translateY(-1px);
+}
+
+.dark .mood-select-close {
+  border-top-color: rgba(76, 217, 100, 0.2);
+}
+
+.dark .mood-select-close span {
+  color: #4cd964;
+  background: rgba(76, 217, 100, 0.1);
+}
+
+.dark .mood-select-close span:hover {
+  background: rgba(76, 217, 100, 0.2);
 }
 
 .selectable-mood {

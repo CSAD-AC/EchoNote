@@ -107,3 +107,101 @@ export const updateCapsule = (data) => {
 export const deleteCapsuleById = (id) => {
   return request.delete("/capsule", { id });
 };
+
+/**
+ * 获取全部分类
+ * @returns {Promise} - 返回分类列表
+ */
+export const getCategories = () => {
+  return request.get("/writing/category");
+};
+
+/**
+ * 获取全部文章
+ * @returns {Promise} - 返回文章列表
+ */
+export const getTexts = () => {
+  return request.get("/writing/text");
+};
+
+/**
+ * 获取文章历史修改记录
+ * @param {number} textId - 文章ID
+ * @returns {Promise} - 返回历史记录列表
+ */
+export const getTextHistory = (textId) => {
+  return request.get("/writing/text/history", { textId });
+};
+
+/**
+ * 文章版本回退
+ * @param {Object} data - 回退数据
+ * @param {number} data.textId - 文章ID
+ * @param {number} data.version - 目标版本号
+ * @returns {Promise} - 返回回退结果
+ */
+export const resetTextVersion = (data) => {
+  return request.put("/writing/text/reset", data);
+};
+
+/**
+ * 添加分类
+ * @param {Object} data - 分类数据
+ * @param {number} data.userId - 用户ID
+ * @param {string} data.name - 分类名称
+ * @returns {Promise} - 返回添加结果
+ */
+export const addCategory = (data) => {
+  return request.post("/writing/category", data);
+};
+
+/**
+ * 新增文章
+ * @param {Object} data - 文章数据
+ * @param {number} data.categoryId - 分类ID
+ * @returns {Promise} - 返回添加结果
+ */
+export const addText = (data) => {
+  return request.post("/writing/text", data);
+};
+
+/**
+ * 删除分类
+ * @param {number} id - 分类ID
+ * @returns {Promise} - 返回删除结果
+ */
+export const deleteCategory = (id) => {
+  return request.delete("/writing/category", { id });
+};
+
+/**
+ * 删除文章
+ * @param {number} id - 文章ID
+ * @returns {Promise} - 返回删除结果
+ */
+export const deleteText = (id) => {
+  return request.delete("/writing/text", { id });
+};
+
+/**
+ * 重命名分类
+ * @param {Object} data - 分类数据
+ * @param {number} data.id - 分类ID
+ * @param {string} data.name - 新分类名称
+ * @returns {Promise} - 返回修改结果
+ */
+export const renameCategory = (data) => {
+  return request.put("/writing/category", data);
+};
+
+/**
+ * 更新文章
+ * @param {Object} data - 文章数据
+ * @param {number} data.textId - 文章ID
+ * @param {string} data.title - 文章标题
+ * @param {string} data.content - 文章内容
+ * @returns {Promise} - 返回更新结果
+ */
+export const updateText = (data) => {
+  return request.put("/writing/text", data);
+};

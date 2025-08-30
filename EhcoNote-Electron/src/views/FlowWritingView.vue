@@ -13,11 +13,11 @@
     </div>
 
     <!-- 固定侧边栏 -->
-    <div 
-      class="fixed-sidebar" 
-      :class="{ 
-        'collapsed': sidebarCollapsed && !sidebarHovered,
-        'hover-expanded': sidebarCollapsed && sidebarHovered
+    <div
+      class="fixed-sidebar"
+      :class="{
+        collapsed: sidebarCollapsed && !sidebarHovered,
+        'hover-expanded': sidebarCollapsed && sidebarHovered,
       }"
       @mouseenter="handleSidebarMouseEnter"
       @mouseleave="handleSidebarMouseLeave"
@@ -38,13 +38,13 @@
             <Setting :size="12" />
           </button>
           <!-- 收缩按钮 -->
-          <button 
-            class="func-btn sidebar-toggle" 
-            :class="{ 'collapsed': sidebarCollapsed }"
+          <button
+            class="func-btn sidebar-toggle"
+            :class="{ collapsed: sidebarCollapsed }"
             @click="toggleSidebar"
             :title="sidebarCollapsed ? '展开侧边栏' : '收缩侧边栏'"
           >
-            <Hide :size="12" :class="{ 'rotated': sidebarCollapsed }" />
+            <Hide :size="12" :class="{ rotated: sidebarCollapsed }" />
           </button>
         </div>
 
@@ -75,6 +75,15 @@
               <option value="center">居中对齐</option>
             </select>
           </div>
+          <div class="setting-item">
+            <label class="setting-label">自动保存间隔</label>
+            <select v-model="settings.autoSaveInterval" @change="saveSettings">
+              <option :value="30000">30秒</option>
+              <option :value="60000">1分钟</option>
+              <option :value="120000">2分钟</option>
+              <option :value="180000">3分钟</option>
+            </select>
+          </div>
         </div>
 
         <!-- 分类管理 -->
@@ -90,7 +99,7 @@
             </button>
           </div>
 
-          <div class="category-list">
+          <div class="category-list" v-loading="loading">
             <div
               v-for="category in categories"
               :key="category.id"
@@ -102,6 +111,13 @@
               <span class="category-name">{{ category.name }}</span>
               <div class="category-actions">
                 <span class="doc-count">{{ getDocCount(category.id) }}</span>
+                <button
+                  class="action-btn"
+                  @click.stop="showRenameCategoryDialog(category)"
+                  title="重命名分类"
+                >
+                  <Setting :size="10" />
+                </button>
                 <button
                   class="action-btn delete-btn"
                   @click.stop="deleteCategory(category.id)"
@@ -123,7 +139,7 @@
             </button>
           </div>
 
-          <div class="doc-list">
+          <div class="doc-list" v-loading="loading">
             <div
               v-for="doc in filteredDocs"
               :key="doc.id"
@@ -134,8 +150,17 @@
               <div class="doc-title">{{ doc.title || "无标题" }}</div>
               <div class="doc-preview">{{ doc.preview }}</div>
               <div class="doc-meta">
-                <span class="doc-date">{{ formatDate(doc.updatedAt) }}</span>
-                <span class="word-count">{{ doc.wordCount }} 字</span>
+                <div class="doc-info">
+                  <span class="doc-date">{{ formatDate(doc.updatedAt) }}</span>
+                  <span class="word-count">{{ doc.wordCount }} 字</span>
+                </div>
+                <button
+                  class="action-btn delete-btn"
+                  @click.stop="deleteText(doc.id)"
+                  title="删除文档"
+                >
+                  <Delete :size="10" />
+                </button>
               </div>
             </div>
           </div>
@@ -144,12 +169,12 @@
     </div>
 
     <!-- 主写作区域 -->
-    <div 
-      class="writing-area" 
-      :class="{ 
+    <div
+      class="writing-area"
+      :class="{
         'sidebar-active': !focusMode && !sidebarCollapsed,
         'sidebar-collapsed': !focusMode && sidebarCollapsed && !sidebarHovered,
-        'sidebar-hover': !focusMode && sidebarCollapsed && sidebarHovered
+        'sidebar-hover': !focusMode && sidebarCollapsed && sidebarHovered,
       }"
     >
       <!-- 写作工具栏 -->
@@ -159,13 +184,15 @@
             v-model="currentDoc.title"
             class="title-input"
             placeholder="输入标题..."
-            @input="saveDocument"
           />
         </div>
         <div class="toolbar-right">
           <div class="format-tools">
             <button class="tool-btn" @click="formatDocument" title="一键格式化">
               <DocumentCopy :size="12" />
+            </button>
+            <button class="tool-btn" @click="showHistory" title="历史记录">
+              <span style="font-size: 12px">🕰️</span>
             </button>
             <button
               class="tool-btn"
@@ -242,12 +269,85 @@
         </div>
       </div>
     </div>
+
+    <!-- 重命名分类对话框 -->
+    <div
+      class="modal-overlay"
+      v-show="showRenameCategory"
+      @click="showRenameCategory = false"
+    >
+      <div class="modal-content" @click.stop>
+        <h3>重命名分类</h3>
+        <input
+          v-model="renameCategoryName"
+          placeholder="输入新的分类名称"
+          @keyup.enter="renameCategoryConfirm"
+        />
+        <div class="modal-actions">
+          <button @click="renameCategoryConfirm">确定</button>
+          <button @click="showRenameCategory = false">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 历史记录对话框 -->
+    <el-dialog
+      v-model="showHistoryDialog"
+      title="文章历史记录"
+      width="80%"
+      :close-on-click-modal="false"
+    >
+      <div v-loading="loadingHistory" class="history-content">
+        <div v-if="historyRecords.length === 0" class="empty-history">
+          <div class="empty-icon">📄</div>
+          <p>暂无历史记录</p>
+        </div>
+        <div v-else class="history-list">
+          <div
+            v-for="record in historyRecords"
+            :key="record.id"
+            class="history-item"
+          >
+            <div class="history-header">
+              <div class="version-info">
+                <span class="version-badge">v{{ record.version }}</span>
+                <h4 class="history-title">{{ record.title }}</h4>
+              </div>
+              <div class="history-meta">
+                <span class="history-time">
+                  {{ formatDate(record.createTime) }}
+                </span>
+              </div>
+            </div>
+            <div class="history-content-preview">
+              {{ record.content.substring(0, 200) }}
+              <span v-if="record.content.length > 200">...</span>
+            </div>
+            <div class="history-actions">
+              <el-button size="small" @click="previewVersion(record)">
+                👁️ 预览
+              </el-button>
+              <el-button
+                size="small"
+                type="warning"
+                @click="revertToVersion(record)"
+              >
+                ⬅️ 回退到此版本
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showHistoryDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, onBeforeRouteLeave } from "vue-router";
 import {
   Hide,
   Plus,
@@ -257,6 +357,19 @@ import {
   DocumentAdd,
   Delete,
 } from "@element-plus/icons-vue";
+import {
+  getCategories,
+  getTexts,
+  getTextHistory,
+  resetTextVersion,
+  addCategory as apiAddCategory,
+  addText as apiAddText,
+  deleteCategory as apiDeleteCategory,
+  deleteText as apiDeleteText,
+  renameCategory as apiRenameCategory,
+  updateText as apiUpdateText,
+} from "@/utils/api";
+import { ElMessage, ElMessageBox } from "element-plus";
 
 const router = useRouter();
 
@@ -265,11 +378,21 @@ const focusMode = ref(false);
 const focusBeam = ref(false);
 const showSettings = ref(false);
 const showAddCategory = ref(false);
+const showRenameCategory = ref(false);
 const selectedCategory = ref(null);
 const selectedDoc = ref(null);
 const newCategoryName = ref("");
+const renameCategoryName = ref("");
+const renameCategoryId = ref(null);
 const sidebarCollapsed = ref(false); // 侧边栏收缩状态
 const sidebarHovered = ref(false); // 侧边栏悬停状态
+const loading = ref(false); // 加载状态
+const showHistoryDialog = ref(false); // 显示历史记录对话框
+const historyRecords = ref([]); // 历史记录列表
+const loadingHistory = ref(false); // 历史记录加载状态
+
+// 自动保存相关
+const autoSaveTimer = ref(null);
 
 // 编辑器引用
 const editor = ref(null);
@@ -285,6 +408,7 @@ const settings = ref({
   autoIndent: true,
   fontSize: 16,
   textAlign: "left", // 新增文字对齐设置，默认左对齐
+  autoSaveInterval: 180000, // 自动保存间隔，默认3分钟
 });
 
 // 文档数据
@@ -299,35 +423,10 @@ const currentDoc = ref({
 });
 
 // 分类数据
-const categories = ref([
-  {
-    id: 1,
-    name: "个人日记",
-  },
-  {
-    id: 2,
-    name: "工作笔记",
-  },
-  {
-    id: 3,
-    name: "学习笔记",
-  },
-]);
+const categories = ref([]);
 
 // 文档列表
-const documents = ref([
-  {
-    id: 1,
-    title: "欢迎使用EchoNote",
-    content:
-      "    这是一个样例文档，您可以开始在这里写作...\n\n    支持**加粗**和*斜体*格式。",
-    categoryId: 1,
-    preview: "    这是一个样例文档，您可以开始在这里写作...",
-    createdAt: new Date("2024-01-01"),
-    updatedAt: new Date("2024-01-01"),
-    wordCount: 35,
-  },
-]);
+const documents = ref([]);
 
 // 计算属性
 const filteredDocs = computed(() => {
@@ -348,9 +447,206 @@ const readingTime = computed(() => {
   return Math.ceil(wordCount.value / wordsPerMinute) || 1;
 });
 
-// 方法
-const goHome = () => {
-  router.push("/");
+// 加载数据的方法
+const loadCategories = async () => {
+  try {
+    loading.value = true;
+    const response = await getCategories();
+    if (response.code === 200) {
+      categories.value = response.data || [];
+    } else {
+      ElMessage.error(response.message || "获取分类失败");
+    }
+  } catch (error) {
+    console.error("获取分类错误:", error);
+    ElMessage.error("获取分类失败");
+  } finally {
+    loading.value = false;
+  }
+};
+
+const addCategory = async () => {
+  if (!newCategoryName.value.trim()) return;
+
+  try {
+    // 获取当前用户ID（这里假设从localStorage获取，实际项目中可能需要从store或其他地方获取）
+    const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
+    const userId = userInfo.id || 1; // 默认用户ID为1
+
+    const response = await apiAddCategory({
+      userId: userId,
+      name: newCategoryName.value.trim(),
+    });
+
+    if (response.code === 200) {
+      ElMessage.success("分类添加成功");
+      newCategoryName.value = "";
+      showAddCategory.value = false;
+      // 重新加载分类列表
+      await loadCategories();
+    } else {
+      ElMessage.error(response.message || "添加分类失败");
+    }
+  } catch (error) {
+    console.error("添加分类错误:", error);
+    ElMessage.error("添加分类失败");
+  }
+};
+
+const showRenameCategoryDialog = (category) => {
+  renameCategoryId.value = category.id;
+  renameCategoryName.value = category.name;
+  showRenameCategory.value = true;
+};
+
+const renameCategoryConfirm = async () => {
+  if (!renameCategoryName.value.trim()) return;
+
+  try {
+    const response = await apiRenameCategory({
+      id: renameCategoryId.value,
+      name: renameCategoryName.value.trim(),
+    });
+
+    if (response.code === 200) {
+      ElMessage.success("分类重命名成功");
+      showRenameCategory.value = false;
+      // 更新分类名称
+      const category = categories.value.find(
+        (cat) => cat.id === renameCategoryId.value
+      );
+      if (category) {
+        category.name = renameCategoryName.value.trim();
+      }
+    } else {
+      ElMessage.error(response.message || "重命名分类失败");
+    }
+  } catch (error) {
+    console.error("重命名分类错误:", error);
+    ElMessage.error("重命名分类失败");
+  }
+};
+
+const loadTexts = async () => {
+  try {
+    const response = await getTexts();
+    if (response.code === 200) {
+      // 将API返回的数据格式转换为组件需要的格式
+      documents.value = (response.data || []).map((item) => ({
+        id: item.id,
+        title: item.title || "无标题",
+        content: item.content || "",
+        categoryId: item.categoryId,
+        preview: item.content
+          ? item.content.replace(/[#*`]/g, "").slice(0, 100) +
+            (item.content.length > 100 ? "..." : "")
+          : "无内容",
+        createdAt: item.createTime ? new Date(item.createTime) : new Date(),
+        updatedAt: item.updateTime ? new Date(item.updateTime) : new Date(),
+        wordCount: item.content ? item.content.replace(/\s/g, "").length : 0,
+      }));
+    } else {
+      ElMessage.error(response.message || "获取文章失败");
+    }
+  } catch (error) {
+    console.error("获取文章错误:", error);
+    ElMessage.error("获取文章失败");
+  } finally {
+    loading.value = false;
+  }
+};
+
+const loadData = async () => {
+  await Promise.all([loadCategories(), loadTexts()]);
+};
+
+// 历史记录相关方法
+const showHistory = async () => {
+  if (!currentDoc.value.id) {
+    ElMessage.warning("请先选择一个文档");
+    return;
+  }
+
+  try {
+    loadingHistory.value = true;
+    showHistoryDialog.value = true;
+    const response = await getTextHistory(currentDoc.value.id);
+    if (response.code === 200) {
+      // 过滤掉当前版本的历史记录
+      const currentContent = currentDoc.value.content || "";
+      const currentTitle = currentDoc.value.title || "";
+      historyRecords.value = (response.data || []).filter(
+        (record) =>
+          record.content !== currentContent || record.title !== currentTitle
+      );
+    } else {
+      ElMessage.error(response.message || "获取历史记录失败");
+    }
+  } catch (error) {
+    console.error("获取历史记录错误:", error);
+    ElMessage.error("获取历史记录失败");
+  } finally {
+    loadingHistory.value = false;
+  }
+};
+
+const revertToVersion = async (record) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要回退到版本 ${record.version} 吗？\n\n标题：${
+        record.title
+      }\n创建时间：${formatDate(
+        record.createTime
+      )}\n\n注意：此操作将会覆盖当前文档内容！`,
+      "版本回退确认",
+      {
+        confirmButtonText: "确定回退",
+        cancelButtonText: "取消",
+        type: "warning",
+        dangerouslyUseHTMLString: true,
+      }
+    );
+
+    const response = await resetTextVersion({
+      textId: currentDoc.value.id,
+      version: record.version,
+    });
+
+    if (response.code === 200) {
+      ElMessage.success("版本回退成功");
+      // 更新当前文档内容
+      currentDoc.value.title = record.title;
+      currentDoc.value.content = record.content;
+      // 更新编辑器内容
+      updateEditorContent();
+      // 关闭对话框
+      showHistoryDialog.value = false;
+      // 重新加载文档列表以更新显示
+      await loadTexts();
+    } else {
+      ElMessage.error(response.message || "版本回退失败");
+    }
+  } catch (error) {
+    if (error !== "cancel") {
+      console.error("版本回退错误:", error);
+      ElMessage.error("版本回退失败");
+    }
+  }
+};
+
+const previewVersion = (record) => {
+  // 显示版本预览（可以在对话框中展开显示全文）
+  ElMessageBox.alert(
+    `<div style="max-height: 400px; overflow-y: auto; line-height: 1.6;">${record.content.replace(
+      /\n/g,
+      "<br>"
+    )}</div>`,
+    `预览版本 ${record.version} - ${record.title}`,
+    {
+      dangerouslyUseHTMLString: true,
+      confirmButtonText: "关闭",
+    }
+  );
 };
 
 const toggleFocusMode = () => {
@@ -393,75 +689,222 @@ const selectDocument = (doc) => {
   });
 };
 
-const createNewDocument = () => {
+const createNewDocument = async () => {
   const defaultCategoryId =
-    selectedCategory.value ||
-    categories.value[0]?.id ||
-    null;
+    selectedCategory.value || categories.value[0]?.id || null;
 
-  const newDoc = {
-    id: Date.now(),
-    title: "",
-    content: "",
-    categoryId: defaultCategoryId,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    wordCount: 0,
-    preview: "",
-  };
+  // 如果没有选中分类且没有默认分类，提示用户先创建分类
+  if (!defaultCategoryId) {
+    ElMessage.warning("请先创建一个分类");
+    showAddCategory.value = true;
+    return;
+  }
 
-  documents.value.unshift(newDoc);
-  selectDocument(newDoc);
-  nextTick(() => {
-    editor.value?.focus();
-    updateEditorContent();
-  });
-};
+  try {
+    const response = await apiAddText({
+      categoryId: defaultCategoryId,
+    });
 
-const saveDocument = () => {
-  if (!currentDoc.value.id) return;
+    if (response.code === 200) {
+      ElMessage.success("文档创建成功");
 
-  const docIndex = documents.value.findIndex(
-    (doc) => doc.id === currentDoc.value.id
-  );
-  if (docIndex !== -1) {
-    currentDoc.value.updatedAt = new Date();
-    currentDoc.value.wordCount = wordCount.value;
-    currentDoc.value.preview =
-      currentDoc.value.content.replace(/[#*`]/g, "").slice(0, 100) +
-      (currentDoc.value.content.length > 100 ? "..." : "");
-    documents.value[docIndex] = { ...currentDoc.value };
+      // 从响应中获取textId
+      const textId = response.data?.textId || Date.now();
+
+      // 创建本地文档对象
+      const newDoc = {
+        id: textId,
+        title: "这是一个示例标题",
+        content: "这是示例内容",
+        categoryId: defaultCategoryId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        wordCount: 0,
+        preview: "",
+      };
+
+      documents.value.unshift(newDoc);
+      selectDocument(newDoc);
+
+      // 创建文档后立即保存一次
+      await saveDocument();
+
+      nextTick(() => {
+        editor.value?.focus();
+        updateEditorContent();
+      });
+    } else {
+      ElMessage.error(response.message || "创建文档失败");
+    }
+  } catch (error) {
+    console.error("创建文档错误:", error);
+    ElMessage.error("创建文档失败");
   }
 };
 
-const addCategory = () => {
-  if (!newCategoryName.value.trim()) return;
+// 添加一个标志位，防止重复保存
+let isSaving = false;
 
-  const newCategory = {
-    id: Date.now(),
-    name: newCategoryName.value.trim(),
-  };
+// 修改 saveDocument 函数，添加防重复机制
+const saveDocument = async () => {
+  // 如果正在保存，则直接返回
+  if (isSaving) {
+    return;
+  }
 
-  categories.value.push(newCategory);
-  newCategoryName.value = "";
-  showAddCategory.value = false;
+  // 如果没有文档ID，则直接返回
+  if (!currentDoc.value.id) return;
+
+  // 设置保存标志位
+  isSaving = true;
+
+  try {
+    // 获取最新历史记录进行比较
+    try {
+      const historyResponse = await getTextHistory(currentDoc.value.id);
+      if (
+        historyResponse.code === 200 &&
+        historyResponse.data &&
+        historyResponse.data.length > 0
+      ) {
+        // 获取最新的历史记录（按版本号排序）
+        const sortedHistory = historyResponse.data.sort(
+          (a, b) => b.version - a.version
+        );
+        const latestVersion = sortedHistory[0];
+
+        // 计算字数差异
+        const currentContent = currentDoc.value.content || "";
+        const latestContent = latestVersion.content || "";
+
+        const currentWordCount = currentContent.replace(/\s/g, "").length;
+        const latestWordCount = latestContent.replace(/\s/g, "").length;
+        const wordCountDifference = Math.abs(
+          currentWordCount - latestWordCount
+        );
+
+        // 如果字数差异小于20字，则不提交更新
+        if (wordCountDifference < 20) {
+          console.log(
+            `字数差异过小（${wordCountDifference}字），跳过本次更新提交`
+          );
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn("获取历史记录失败，将继续保存文档:", error);
+    }
+
+    const docIndex = documents.value.findIndex(
+      (doc) => doc.id === currentDoc.value.id
+    );
+    if (docIndex !== -1) {
+      currentDoc.value.updatedAt = new Date();
+      currentDoc.value.wordCount = wordCount.value;
+      currentDoc.value.preview =
+        currentDoc.value.content.replace(/[#*`]/g, "").slice(0, 100) +
+        (currentDoc.value.content.length > 100 ? "..." : "");
+      documents.value[docIndex] = { ...currentDoc.value };
+    }
+
+    // 调用API保存文档
+    try {
+      const response = await apiUpdateText({
+        textId: currentDoc.value.id,
+        title: currentDoc.value.title || "无标题",
+        content: currentDoc.value.content,
+      });
+
+      if (response.code !== 200) {
+        console.error("保存文档失败:", response.message);
+      }
+    } catch (error) {
+      console.error("保存文档错误:", error);
+    }
+  } finally {
+    // 保存完成后重置标志位
+    isSaving = false;
+  }
 };
 
-const deleteCategory = (categoryId) => {
-  if (confirm("确定要删除这个分类吗？所有文档都将被删除。")) {
-    // 删除该分类下的所有文档
-    documents.value = documents.value.filter(
-      (doc) => doc.categoryId !== categoryId
+const deleteCategory = async (categoryId) => {
+  try {
+    await ElMessageBox.confirm(
+      "确定要删除这个分类吗？分类下的所有文档也将被删除。",
+      "删除分类确认",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }
     );
 
-    // 删除分类
-    categories.value = categories.value.filter(
-      (cat) => cat.id !== categoryId
-    );
+    const response = await apiDeleteCategory(categoryId);
 
-    // 如果当前选中的分类被删除，清空选中
-    if (selectedCategory.value === categoryId) {
-      selectedCategory.value = null;
+    if (response.code === 200) {
+      ElMessage.success("分类删除成功");
+
+      // 删除该分类下的所有文档
+      documents.value = documents.value.filter(
+        (doc) => doc.categoryId !== categoryId
+      );
+
+      // 删除分类
+      categories.value = categories.value.filter(
+        (cat) => cat.id !== categoryId
+      );
+
+      // 如果当前选中的分类被删除，清空选中
+      if (selectedCategory.value === categoryId) {
+        selectedCategory.value = null;
+      }
+    } else {
+      ElMessage.error(response.message || "删除分类失败");
+    }
+  } catch (error) {
+    if (error !== "cancel") {
+      console.error("删除分类错误:", error);
+      ElMessage.error("删除分类失败");
+    }
+  }
+};
+
+const deleteText = async (textId) => {
+  try {
+    await ElMessageBox.confirm("确定要删除这个文档吗？", "删除文档确认", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+
+    const response = await apiDeleteText(textId);
+
+    if (response.code === 200) {
+      ElMessage.success("文档删除成功");
+
+      // 删除文档
+      documents.value = documents.value.filter((doc) => doc.id !== textId);
+
+      // 如果当前选中的文档被删除，清空选中
+      if (selectedDoc.value === textId) {
+        selectedDoc.value = null;
+        currentDoc.value = {
+          id: null,
+          title: "",
+          content: "",
+          categoryId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          wordCount: 0,
+        };
+      }
+    } else {
+      ElMessage.error(response.message || "删除文档失败");
+    }
+  } catch (error) {
+    if (error !== "cancel") {
+      console.error("删除文档错误:", error);
+      ElMessage.error("删除文档失败");
     }
   }
 };
@@ -558,7 +1001,6 @@ const insertFormat = (prefix) => {
       isFormatting.value = false;
       // 直接从编辑器获取纯文本保存，不触发重新渲染
       currentDoc.value.content = extractPlainTextForSave();
-      saveDocument();
       updateFocusBeam();
     }, 0);
   }
@@ -579,11 +1021,12 @@ const formatDocument = () => {
 
   currentDoc.value.content = content;
   updateEditorContent();
-  saveDocument();
 };
 
 const saveSettings = () => {
   localStorage.setItem("flowWritingSettings", JSON.stringify(settings.value));
+  // 重新启动自动保存定时器
+  startAutoSaveTimer();
 };
 
 const loadSettings = () => {
@@ -677,6 +1120,30 @@ const updateEditorContent = () => {
   editor.value.innerHTML = html;
 };
 
+// 在 saveSettings 函数后添加新的函数
+const startAutoSaveTimer = () => {
+  // 清除现有的定时器
+  if (autoSaveTimer.value) {
+    clearInterval(autoSaveTimer.value);
+  }
+
+  // 设置新的定时器
+  if (settings.value.autoSaveInterval > 0) {
+    autoSaveTimer.value = setInterval(() => {
+      if (currentDoc.value.id && !isSaving) {
+        saveDocument();
+      }
+    }, settings.value.autoSaveInterval);
+  }
+};
+
+const stopAutoSaveTimer = () => {
+  if (autoSaveTimer.value) {
+    clearInterval(autoSaveTimer.value);
+    autoSaveTimer.value = null;
+  }
+};
+
 // 全局键盘事件处理器（主要处理ESC键）
 const handleGlobalKeydown = (e) => {
   // ESC 键退出专注模式
@@ -729,7 +1196,7 @@ const handleKeydown = (e) => {
     } else {
       range.setStartAfter(br);
     }
-    
+
     range.collapse(false);
     selection.removeAllRanges();
     selection.addRange(range);
@@ -763,26 +1230,25 @@ const updateFocusBeam = () => {
 };
 
 const formatDate = (date) => {
-  const now = new Date();
-  const diff = now - new Date(date);
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const dateObj = new Date(date);
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const day = String(dateObj.getDate()).padStart(2, "0");
+  const hours = String(dateObj.getHours()).padStart(2, "0");
+  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+  const seconds = String(dateObj.getSeconds()).padStart(2, "0");
 
-  if (days === 0) return "今天";
-  if (days === 1) return "昨天";
-  if (days < 7) return `${days}天前`;
-
-  return new Date(date).toLocaleDateString();
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
 // 输入事件处理器
 const handleInput = () => {
   if (!editor.value || isFormatting.value) return;
 
-  // 直接保存内容（默认开启自动保存）
+  // 更新内容但不立即保存，由定时器控制自动保存
   const newContent = extractPlainTextForSave();
   if (newContent !== currentDoc.value.content) {
     currentDoc.value.content = newContent;
-    saveDocument();
   }
 
   if (focusBeam.value) {
@@ -815,9 +1281,63 @@ const handleEditorSelection = () => {
   }
 };
 
+// 添加窗口关闭前的事件监听器
+const handleBeforeUnload = () => {
+  // 静默保存当前文档
+  if (currentDoc.value.id && !isSaving) {
+    // 使用同步 XMLHttpRequest 实现静默保存，确保在页面关闭前发送请求
+    try {
+      // 准备要发送的数据
+      const saveData = {
+        textId: currentDoc.value.id,
+        title: currentDoc.value.title || "无标题",
+        content: currentDoc.value.content,
+      };
+
+      // 获取保存文档的API URL
+      const apiUrl = "http://localhost:8080/api/writing/text";
+
+      // 获取认证token
+      const token = localStorage.getItem("token");
+
+      // 创建同步 XMLHttpRequest
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", apiUrl, false); // false 表示同步请求
+
+      // 设置请求头
+      xhr.setRequestHeader("Content-Type", "application/json;charset=utf-8");
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
+
+      // 发送请求
+      xhr.send(JSON.stringify(saveData));
+
+      // 检查响应状态
+      if (xhr.status >= 200 && xhr.status < 300) {
+        console.log("文档保存成功");
+      } else {
+        console.error("文档保存失败，状态码:", xhr.status);
+      }
+    } catch (error) {
+      console.error("使用 XMLHttpRequest 保存失败:", error);
+      try {
+        // 如果 XMLHttpRequest 失败，尝试普通保存
+        saveDocument();
+      } catch (saveError) {
+        console.error("普通保存也失败了:", saveError);
+      }
+    }
+  }
+  // 不阻止默认行为，实现静默保存
+};
+
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   loadSettings();
+
+  // 加载数据
+  await loadData();
 
   // 选中第一个文档
   if (documents.value.length > 0) {
@@ -834,11 +1354,45 @@ onMounted(() => {
 
   // 监听全局键盘事件（主要为ESC键）
   document.addEventListener("keydown", handleGlobalKeydown);
+
+  // 启动自动保存定时器
+  startAutoSaveTimer();
+
+  // 添加窗口关闭前的事件监听器
+  window.addEventListener("beforeunload", handleBeforeUnload);
 });
 
 onUnmounted(() => {
   document.removeEventListener("keydown", handleGlobalKeydown);
+  // 清理自动保存定时器
+  stopAutoSaveTimer();
+  // 移除窗口关闭前的事件监听器
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+
+  // 在组件卸载前保存当前文档
+  if (currentDoc.value.id && !isSaving) {
+    saveDocument();
+  }
 });
+
+// 添加路由离开前的守卫，实现静默保存
+onBeforeRouteLeave((to, from, next) => {
+  // 静默保存当前文档
+  if (currentDoc.value.id && !isSaving) {
+    saveDocument();
+  }
+  // 允许路由切换
+  next();
+});
+
+// 方法
+const goHome = () => {
+  // 在导航到首页前保存当前文档
+  if (currentDoc.value.id && !isSaving) {
+    saveDocument();
+  }
+  router.push("/");
+};
 </script>
 
 <style scoped>
@@ -935,10 +1489,8 @@ onUnmounted(() => {
   backdrop-filter: blur(25px) saturate(180%);
   border-right: 1px solid rgba(255, 255, 255, 0.2);
   z-index: 1000;
-  box-shadow: 
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 4px 32px rgba(0, 0, 0, 0.08),
-    0 8px 64px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 4px 32px rgba(0, 0, 0, 0.08), 0 8px 64px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   transform: translateX(0);
@@ -948,19 +1500,15 @@ onUnmounted(() => {
 .fixed-sidebar.collapsed {
   width: 60px;
   transform: translateX(-50px);
-  box-shadow: 
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    0 2px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 2px 16px rgba(0, 0, 0, 0.04);
 }
 
 /* 悬停展开 */
 .fixed-sidebar.hover-expanded {
   width: 320px;
   transform: translateX(0);
-  box-shadow: 
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 8px 48px rgba(0, 0, 0, 0.12),
-    0 16px 96px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 8px 48px rgba(0, 0, 0, 0.12), 0 16px 96px rgba(0, 0, 0, 0.06);
 }
 
 /* 侧边栏内容区域 */
@@ -983,19 +1531,28 @@ onUnmounted(() => {
 .sidebar-header {
   padding: 24px 20px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(135deg, rgba(66, 185, 131, 0.05) 0%, rgba(102, 126, 234, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(66, 185, 131, 0.05) 0%,
+    rgba(102, 126, 234, 0.05) 100%
+  );
   backdrop-filter: blur(10px);
   position: relative;
 }
 
 .sidebar-header::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
+  );
 }
 
 .sidebar-title {
@@ -1013,7 +1570,7 @@ onUnmounted(() => {
 }
 
 .sidebar-title::before {
-  content: '📝';
+  content: "📝";
   background: none;
   -webkit-background-clip: unset;
   background-clip: unset;
@@ -1038,12 +1595,20 @@ onUnmounted(() => {
 }
 
 .sidebar-content::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, rgba(66, 185, 131, 0.3), rgba(102, 126, 234, 0.3));
+  background: linear-gradient(
+    135deg,
+    rgba(66, 185, 131, 0.3),
+    rgba(102, 126, 234, 0.3)
+  );
   border-radius: 2px;
 }
 
 .sidebar-content::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, rgba(66, 185, 131, 0.5), rgba(102, 126, 234, 0.5));
+  background: linear-gradient(
+    135deg,
+    rgba(66, 185, 131, 0.5),
+    rgba(102, 126, 234, 0.5)
+  );
 }
 
 /* 功能按钮区域 */
@@ -1109,7 +1674,7 @@ onUnmounted(() => {
 
 /* 收缩状态指示器 */
 .func-btn.sidebar-toggle.collapsed::after {
-  content: '';
+  content: "";
   position: absolute;
   top: -2px;
   right: -2px;
@@ -1123,7 +1688,8 @@ onUnmounted(() => {
 }
 
 @keyframes pulse-indicator {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
@@ -1305,8 +1871,14 @@ onUnmounted(() => {
 .doc-meta {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 10px;
   color: #94a3b8;
+}
+
+.doc-info {
+  display: flex;
+  gap: 8px;
 }
 
 /* 写作工具栏 */
@@ -1829,14 +2401,16 @@ onUnmounted(() => {
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(25px) saturate(180%);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 4px 32px rgba(0, 0, 0, 0.2),
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 4px 32px rgba(0, 0, 0, 0.2),
     0 8px 64px rgba(0, 0, 0, 0.1);
 }
 
 .dark .sidebar-header {
-  background: linear-gradient(135deg, rgba(76, 217, 100, 0.05) 0%, rgba(167, 139, 250, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(76, 217, 100, 0.05) 0%,
+    rgba(167, 139, 250, 0.05) 100%
+  );
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -1907,6 +2481,194 @@ onUnmounted(() => {
   color: #64748b;
 }
 
+/* 历史记录对话框样式 */
+.history-content {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* 历史记录对话框内容适配 */
+.dark .history-content {
+  background: transparent;
+}
+
+.dark .history-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dark .history-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.dark .history-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.dark .history-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.empty-history {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+}
+
+.dark .empty-history {
+  color: #9ca3af;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.history-item {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.history-item:hover {
+  background: rgba(66, 185, 131, 0.05);
+  border-color: rgba(66, 185, 131, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dark .history-item {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .history-item:hover {
+  background: rgba(76, 217, 100, 0.05);
+  border-color: rgba(76, 217, 100, 0.2);
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.version-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.version-badge {
+  background: linear-gradient(135deg, #42b983 0%, #667eea 100%);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.dark .version-badge {
+  background: linear-gradient(135deg, #4cd964 0%, #5ac8fa 100%);
+}
+
+.history-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.dark .history-title {
+  color: #e2e8f0;
+}
+
+.history-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.history-time {
+  font-size: 0.75rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.dark .history-time {
+  color: #d1d5db;
+  font-weight: 500;
+}
+
+.history-content-preview {
+  color: #1f2937;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.dark .history-content-preview {
+  color: #f3f4f6;
+  font-weight: 400;
+}
+
+.history-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* 历史记录按钮样式 */
+.history-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.history-item {
+  animation: fadeInUp 0.3s ease;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .history-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .history-meta {
+    align-items: flex-start;
+  }
+
+  .history-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
 .dark .modal-actions button:first-child {
   background: linear-gradient(135deg, #4cd964 0%, #a78bfa 100%);
 }
@@ -1922,7 +2684,7 @@ onUnmounted(() => {
   .fixed-sidebar {
     width: 280px;
   }
-  
+
   .fixed-sidebar.collapsed {
     width: 50px;
     transform: translateX(-40px);
@@ -1931,11 +2693,11 @@ onUnmounted(() => {
   .writing-area.sidebar-active {
     margin-left: 280px;
   }
-  
+
   .writing-area.sidebar-collapsed {
     margin-left: 10px;
   }
-  
+
   .writing-area.sidebar-hover {
     margin-left: 280px;
   }
@@ -1953,5 +2715,83 @@ onUnmounted(() => {
     padding: 40px 20px;
   }
 }
+</style>
 
+<!-- 全局样式，不使用 scoped，用于 Element Plus 组件覆盖 -->
+<style>
+/* Element Plus 对话框黑夜模式全局适配 */
+.dark .el-dialog {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .el-dialog .el-dialog__body {
+  background: transparent !important;
+}
+
+.dark .el-dialog__header {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .el-dialog__title {
+  color: #e2e8f0 !important;
+}
+
+.dark .el-dialog__headerbtn .el-icon {
+  color: #94a3b8 !important;
+}
+
+.dark .el-dialog__headerbtn:hover .el-icon {
+  color: #e2e8f0 !important;
+}
+
+.dark .el-dialog__footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: transparent !important;
+}
+
+.dark .el-overlay {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+.dark .el-dialog__wrapper {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* 针对不同类型的对话框 */
+.dark .el-dialog.el-dialog--center {
+  background: rgba(15, 23, 42, 0.95) !important;
+}
+
+.dark .el-dialog[role="dialog"] {
+  background: rgba(15, 23, 42, 0.95) !important;
+}
+
+/* 对话框按钮适配 */
+.dark .el-dialog .el-button {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .el-dialog .el-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #f1f5f9 !important;
+}
+
+.dark .el-dialog .el-button--warning {
+  background: rgba(245, 158, 11, 0.1) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  color: #fbbf24 !important;
+}
+
+.dark .el-dialog .el-button--warning:hover {
+  background: rgba(245, 158, 11, 0.2) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  color: #fcd34d !important;
+}
 </style>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="uno.zhuchen.echonotejava.Mapper.CategoryMapper">
+
+    <insert id="addCategory">
+        INSERT INTO category(userId, name) VALUES
+        (#{userId}, #{name})
+    </insert>
+
+    <update id="updateCategory">
+        UPDATE category
+        <set>
+            <if test="name != null">
+                name = #{name},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="getAllCategoriesByUserId" resultType="uno.zhuchen.echonotejava.Project.Writing.Category">
+        SELECT id, userId, name, createTime, updateTime FROM category WHERE userId = #{userId} AND status = 1
+    </select>
+    <select id="getCategoryById" resultType="uno.zhuchen.echonotejava.Project.Writing.Category">
+        SELECT id, userId, name, createTime, updateTime FROM category WHERE id = #{id}
+    </select>
+
+    <delete id="deleteCategoryById">
+        UPDATE category SET status = 0 WHERE id = #{id}
+    </delete>
+
+
+</mapper>

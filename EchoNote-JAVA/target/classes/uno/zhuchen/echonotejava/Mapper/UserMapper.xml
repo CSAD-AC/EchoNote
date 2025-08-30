@@ -39,7 +39,7 @@
     </update>
 
     <select id="findByUsername" resultType="uno.zhuchen.echonotejava.Project.User.User">
-        SELECT * FROM user WHERE username = #{username}
+        SELECT * FROM user WHERE userName = #{userName}
     </select>
 
 </mapper>

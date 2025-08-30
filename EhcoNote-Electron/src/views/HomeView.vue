@@ -164,6 +164,21 @@
         </div>
       </div>
     </section>
+    <div class="footer-beian">
+      <img
+        src="https://inews.gtimg.com/newsapp_bt/0/0613150938895_706/0"
+        alt="备案图标"
+        class="beian-icon"
+      />
+      <a
+        href="https://beian.miit.gov.cn"
+        target="_blank"
+        rel="noopener"
+        class="beian-link"
+      >
+        粤ICP备2025461907号-1
+      </a>
+    </div>
   </Layout>
 </template>
 
@@ -737,10 +752,104 @@ function navigateToFeature(feature) {
   }
 
   .card-header,
-  .card-content,
   .card-footer {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
+  }
+}
+
+/* 美化备案信息 */
+.footer-beian {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2rem;
+  padding: 1rem 0;
+  border-top: 1px solid #eee;
+  transition: all 0.3s ease;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(66, 185, 131, 0.05),
+    transparent
+  );
+}
+
+.beian-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+  filter: grayscale(100%);
+}
+
+.beian-link {
+  font-size: 0.9rem;
+  color: #888;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  padding: 4px 8px;
+  border-radius: 4px;
+  position: relative;
+  font-weight: 500;
+}
+
+.beian-link:hover {
+  color: #42b983;
+  background-color: rgba(66, 185, 131, 0.1);
+  transform: translateY(-2px);
+}
+
+.beian-link::after {
+  content: "公网安";
+  position: relative;
+  top: -2px;
+  margin-left: 4px;
+  font-size: 0.7rem;
+  background: #42b983;
+  color: white;
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+.footer-beian:hover .beian-icon {
+  opacity: 1;
+  transform: scale(1.1);
+  filter: grayscale(0%);
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .footer-beian {
+    margin-top: 1.5rem;
+    padding: 0.8rem 0;
+  }
+
+  .beian-link {
+    font-size: 0.8rem;
+  }
+
+  .beian-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-beian {
+    margin-top: 1rem;
+    padding: 0.6rem 0;
+    gap: 6px;
+  }
+
+  .beian-link {
+    font-size: 0.75rem;
+  }
+
+  .beian-icon {
+    width: 16px;
+    height: 16px;
   }
 }
 </style>

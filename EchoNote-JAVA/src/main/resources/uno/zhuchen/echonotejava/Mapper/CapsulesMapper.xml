@@ -6,11 +6,11 @@
 <mapper namespace="uno.zhuchen.echonotejava.Mapper.CapsulesMapper">
 
     <insert id="addCapsules" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO capsules(user_id, title, location, description) VALUES
+        INSERT INTO capsules(userId, title, location, description) VALUES
         (#{userId}, #{title}, #{location}, #{description})
     </insert>
     <insert id="addMoodForCapsules">
-        INSERT INTO capsules_moods(capsule_id, mood_id) VALUES
+        INSERT INTO capsules_moods(capsuleId, moodId) VALUES
         (#{capsulesId}, #{moodId})
     </insert>
 
@@ -36,14 +36,14 @@
         DELETE FROM capsules WHERE id = #{id}
     </delete>
     <delete id="deleteMoodByCapsulesId">
-        DELETE FROM capsules_moods WHERE capsule_id = #{id}
+        DELETE FROM capsules_moods WHERE capsuleId = #{id}
     </delete>
     <delete id="deleteMoodByCapsules">
-        DELETE FROM capsules_moods WHERE capsule_id = #{id};
+        DELETE FROM capsules_moods WHERE capsuleId = #{id};
     </delete>
     <insert id="addMoodForCapsule">
         <if test="moods != null and moods.size() > 0">
-            INSERT INTO capsules_moods(capsule_id, mood_id) VALUES
+            INSERT INTO capsules_moods(capsuleId, moodId) VALUES
             <foreach collection="moods" item="mood" separator=",">
                 (#{id}, #{mood.id})
             </foreach>
@@ -51,10 +51,10 @@
     </insert>
 
     <select id="findCapsulesById" resultType="uno.zhuchen.echonotejava.Project.Capsules.Capsules">
-        SELECT id, user_id AS userId, title, location, description, createTime, updateTime, status FROM capsules WHERE id = #{id}
+        SELECT id, userId AS userId, title, location, description, createTime, updateTime, status FROM capsules WHERE id = #{id}
     </select>
     <select id="findCapsulesByUserId" resultType="uno.zhuchen.echonotejava.Project.Capsules.Capsules">
-        SELECT id, user_id AS userId, title, location, description, createTime, updateTime, status FROM capsules WHERE user_id = #{id}
+        SELECT id, userId AS userId, title, location, description, createTime, updateTime, status FROM capsules WHERE userId = #{id}
     </select>
 
 

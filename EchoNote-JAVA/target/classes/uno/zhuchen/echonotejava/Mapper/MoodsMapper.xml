@@ -22,8 +22,7 @@
         DELETE FROM moods WHERE id = #{id}
     </delete>
     <select id="findAllMoodByCapsulesId" resultType="uno.zhuchen.echonotejava.Project.Capsules.Mood">
-        SELECT id, name, createTime FROM moods WHERE id IN
-        (SELECT mood_id FROM capsules_moods WHERE capsule_id = #{id})
+        SELECT moods.id, name, createTime FROM moods left join capsules_moods ON moods.id = capsules_moods.moodId WHERE capsules_moods.capsuleId = #{id}
     </select>
     <select id="findMoodById" resultType="uno.zhuchen.echonotejava.Project.Capsules.Mood">
         SELECT id, name, createTime FROM moods WHERE id = #{id}

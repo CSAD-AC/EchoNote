@@ -80,6 +80,7 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
             Map<String, String> responseBody = new HashMap<>();
             responseBody.put("error", "用户未登录");
             new ObjectMapper().writeValue(response.getOutputStream(), responseBody);
+            return;
         }
 
         filterChain.doFilter(request, response);

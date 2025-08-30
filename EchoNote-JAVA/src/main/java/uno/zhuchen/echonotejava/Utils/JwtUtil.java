@@ -83,44 +83,5 @@ public class JwtUtil {
         return claims.get("userName").toString();
     }
 
-    /**
-     * 从请求头中获取用户ID
-     * @param request HTTP请求
-     * @return 用户ID
-     */
-    public static String getUserIdFromRequest(HttpServletRequest request) {
-        String token = getTokenFromRequest(request);
-        if (token != null) {
-            Claims claims = parseToken(token);
-            return claims.get("userId").toString();
-        }
-        return null;
-    }
-
-    /**
-     * 从请求头中获取用户名
-     * @param request HTTP请求
-     * @return 用户名
-     */
-    public static String getUserNameFromRequest(HttpServletRequest request) {
-        String token = getTokenFromRequest(request);
-        if (token != null) {
-            return extractUsername(token);
-        }
-        return null;
-    }
-
-    /**
-     * 从请求头中提取Token
-     * @param request HTTP请求
-     * @return Token字符串
-     */
-    private static String getTokenFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
-    }
 
 }

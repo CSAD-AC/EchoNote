@@ -112,7 +112,7 @@ const userInfo = ref(null);
 const router = useRouter();
 
 // 生成粒子样式
-function getParticleStyle(index) {
+function getParticleStyle() {
   const size = Math.random() * 4 + 2;
   const duration = Math.random() * 20 + 10;
   const delay = Math.random() * 5;
