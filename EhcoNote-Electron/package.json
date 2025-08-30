@@ -2,6 +2,8 @@
   "name": "echonote",
   "version": "0.1.0",
   "private": true,
+  "description": "EchoNote - A desktop note-taking application built with Electron and Vue.js",
+  "author": "zhuchen",
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",

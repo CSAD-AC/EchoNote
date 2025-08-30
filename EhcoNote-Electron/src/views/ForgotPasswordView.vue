@@ -16,7 +16,7 @@
             <el-input
               v-model="formData.email"
               placeholder="电子邮箱"
-              :prefix-icon="MessageFilled"
+              :prefix-icon="Message"
               :validate-event="false"
             ></el-input>
           </el-form-item>
@@ -50,7 +50,7 @@
  * 提供密码重置功能，通过邮箱发送重置链接
  */
 // 导入所需图标
-import { MessageFilled } from "@element-plus/icons-vue";
+import { Message } from "@element-plus/icons-vue";
 // 导入Element Plus组件
 import { ElForm, ElFormItem, ElInput, ElButton } from "element-plus";
 // 导入公共布局组件

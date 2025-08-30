@@ -21,7 +21,7 @@
         <div class="logo-section">
           <div class="logo-container">
             <div class="logo-wrapper">
-              <img alt="EchoNote Logo" src="@/assets/logo.png" class="logo" />
+              <img alt="EchoNote Logo" :src="logoPath" class="logo" />
             </div>
             <router-link to="/" class="app-name-link">
               <h1 class="app-name">
@@ -110,6 +110,7 @@ import { useRouter } from "vue-router";
 const darkMode = ref(false);
 const userInfo = ref(null);
 const router = useRouter();
+const logoPath = ref(require("@/assets/logo.png"));
 
 // 生成粒子样式
 function getParticleStyle() {

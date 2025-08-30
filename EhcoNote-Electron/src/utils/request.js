@@ -8,7 +8,7 @@ class Request {
   constructor() {
     // 创建axios实例
     this.instance = axios.create({
-      baseURL: "http://localhost:8080", // 基础URL
+      baseURL: "https://zhuchen.uno/api", // 基础URL
       timeout: 5000, // 请求超时时间
       headers: {
         "Content-Type": "application/json;charset=utf-8",

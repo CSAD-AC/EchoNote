@@ -24,7 +24,7 @@
             <el-input
               v-model="formData.email"
               placeholder="电子邮箱"
-              :prefix-icon="MessageFilled"
+              :prefix-icon="Message"
               :validate-event="false"
             ></el-input>
           </el-form-item>
@@ -80,7 +80,7 @@
  * 提供用户注册功能，包含表单验证和提交逻辑
  */
 // 导入所需图标
-import { UserFilled, MessageFilled, Lock } from "@element-plus/icons-vue";
+import { UserFilled, Message, Lock } from "@element-plus/icons-vue";
 // 导入Element Plus组件
 import { ElForm, ElFormItem, ElInput, ElButton, ElMessage } from "element-plus";
 // 导入公共布局组件

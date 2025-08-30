@@ -21,14 +21,19 @@ async function createWindow() {
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
       nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
       contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION,
+      // 在生产环境中启用webSecurity
+      webSecurity: !isDevelopment,
     },
   });
+
+  // 在开发环境中打开开发者工具
+  if (isDevelopment) {
+    win.webContents.openDevTools();
+  }
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
     await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL);
-    // 禁用自动打开开发者工具
-    // if (!process.env.IS_TEST) win.webContents.openDevTools();
   } else {
     createProtocol("app");
     // Load the index.html when not in development

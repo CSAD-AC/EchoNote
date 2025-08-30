@@ -170,10 +170,21 @@ function handleLogin() {
         .catch((error) => {
           loading.value = false;
           console.error("登录请求失败:", error);
-          if (error.response.status === 401) {
+          // 1. 有响应，且为 401
+          if (error.response?.status === 401) {
             ElMessage.error("用户名或密码错误");
-          } else {
-            ElMessage.error("网络错误，请稍后重试");
+          }
+          // 2. 有响应，其它状态码
+          else if (error.response) {
+            ElMessage.error(error.response.data?.message || "登录失败");
+          }
+          // 3. 无响应（断网、超时、CORS）
+          else if (error.request) {
+            ElMessage.error("网络异常，请检查网络连接");
+          }
+          // 4. 其它未知错误
+          else {
+            ElMessage.error("系统异常，请稍后重试");
           }
         });
     }
