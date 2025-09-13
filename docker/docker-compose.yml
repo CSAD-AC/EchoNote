@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库服务
+  mysql-db:
+    image: mysql:8.0.33  # 使用稳定的 MySQL 8 版本
+    container_name: echo-note-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"  # 宿主机的 3306 映射到容器的 3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=1353914278  # 你设置的 root 密码
+      - MYSQL_DATABASE=echonote         # 初始数据库（与你的脚本一致）
+      - TZ=Asia/Shanghai                # 设置时区
+    volumes:
+      - ./mysql-data:/var/lib/mysql                 # 数据持久化
+      - ./EchoNote.sql:/docker-entrypoint-initdb.d/EchoNote.sql  # 初始化脚本
+    networks:
+      - echo-note-network
+    healthcheck:  # 健康检查
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p1353914278"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s  # 给 MySQL 足够的启动时间
+
+  # 后端 Spring Boot 服务（需要调整以连接 MySQL）
+  backend-app:
+    container_name: echo-note-backend
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8080:8080"
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/echonote?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=1353914278
+    depends_on:
+      mysql-db:
+        condition: service_healthy  # 等待 MySQL 健康检查通过
+    networks:
+      - echo-note-network
+    restart: unless-stopped
+
+  # 前端 Nginx 服务
+  frontend-app:
+    container_name: echo-note-frontend
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend-app
+    networks:
+      - echo-note-network
+    restart: unless-stopped
+
+# 定义自定义网络，便于服务间通信
+networks:
+  echo-note-network:
+    driver: bridge
