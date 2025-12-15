@@ -20,6 +20,8 @@ module.exports = defineConfig({
           output: "dist_electron",
         },
       },
+      // 明确指定主进程文件
+      mainProcessFile: "src/background.js",
     },
   },
 });

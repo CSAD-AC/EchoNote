@@ -46,7 +46,8 @@ class Request {
           localStorage.removeItem("userInfo");
           // 跳转到登录页
           ElMessage.error("登录已过期，请重新登录");
-          window.location.href = "/login";
+          // TODO: 理解Hash模式和History模式的区别
+          window.location.href = "/#/login";
         }
         return Promise.reject(error);
       }

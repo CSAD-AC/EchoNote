@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EchoNote - 思维捕捉与深化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 15px 0;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4a6cf7;
+        }
+        
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 20px;
+            padding: 8px 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        
+        .search-bar input {
+            border: none;
+            outline: none;
+            margin-left: 8px;
+            width: 200px;
+        }
+        
+        .welcome-section {
+            margin-bottom: 30px;
+        }
+        
+        .welcome-section h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+        
+        .welcome-section p {
+            color: #718096;
+            max-width: 600px;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 24px;
+        }
+        
+        .capsule .icon { background: #e0f2fe; color: #0284c7; }
+        .writing .icon { background: #fce7f3; color: #db2777; }
+        .ferment .icon { background: #dcfce7; color: #16a34a; }
+        .maze .icon { background: #fef3c7; color: #d97706; }
+        
+        .card-header h3 {
+            font-size: 18px;
+            color: #2d3748;
+        }
+        
+        .feature-card p {
+            color: #718096;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #f1f1f1;
+            padding-top: 15px;
+            color: #a0aec0;
+            font-size: 13px;
+        }
+        
+        .recent-notes {
+            margin-top: 50px;
+        }
+        
+        .recent-notes h2 {
+            margin-bottom: 20px;
+            font-size: 22px;
+            color: #2d3748;
+        }
+        
+        .notes-list {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .note-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #f1f1f1;
+        }
+        
+        .note-item:last-child {
+            border-bottom: none;
+        }
+        
+        .note-title {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .note-preview {
+            color: #718096;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        @media (max-width: 768px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .user-section {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">EchoNote</div>
+            <div class="user-section">
+                <div class="search-bar">
+                    <span>🔍</span>
+                    <input type="text" placeholder="搜索笔记和灵感...">
+                </div>
+                <div class="user-avatar">
+                    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM0YThkZjIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjAgMjF2LTJhNCA0IDAgMCAwLTQtNEg4YTQgNCAwIDAgMC00IDR2MiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIvPjwvc3ZnPg==" alt="用户头像" width="32" height="32">
+                </div>
+            </div>
+        </header>
+        
+        <section class="welcome-section">
+            <h1>欢迎回来，思维探索者</h1>
+            <p>今天准备探索什么想法？选择一个工具开始吧</p>
+        </section>
+        
+        <div class="features-grid">
+            <div class="feature-card capsule">
+                <div class="card-header">
+                    <div class="icon">💡</div>
+                    <h3>灵光胶囊</h3>
+                </div>
+                <p>快速捕捉闪现的灵感，支持文字、图片和音频记录。不要让任何想法溜走！</p>
+                <div class="stats">
+                    <span>昨日记录: 5条</span>
+                    <span>进入 →</span>
+                </div>
+            </div>
+            
+            <div class="feature-card writing">
+                <div class="card-header">
+                    <div class="icon">✍️</div>
+                    <h3>心流写作</h3>
+                </div>
+                <p>沉浸式写作环境，减少干扰，让思维流畅表达。专注于内容创作本身。</p>
+                <div class="stats">
+                    <span>最近使用: 2小时前</span>
+                    <span>进入 →</span>
+                </div>
+            </div>
+            
+            <div class="feature-card ferment">
+                <div class="card-header">
+                    <div class="icon">🕒</div>
+                    <h3>思维慢发酵</h3>
+                </div>
+                <p>让想法经过时间沉淀，AI会提供反思问题，帮助您获得新的视角和洞察。</p>
+                <div class="stats">
+                    <span>待回顾: 3条</span>
+                    <span>进入 →</span>
+                </div>
+            </div>
+            
+            <div class="feature-card maze">
+                <div class="card-header">
+                    <div class="icon">🧩</div>
+                    <h3>思维迷宫</h3>
+                </div>
+                <p>通过哲学问题和逻辑训练锻炼思维肌肉，提升思考质量和创造力。</p>
+                <div class="stats">
+                    <span>本周训练: 2/5</span>
+                    <span>进入 →</span>
+                </div>
+            </div>
+        </div>
+        
+        <section class="recent-notes">
+            <h2>最近笔记</h2>
+            <div class="notes-list">
+                <div class="note-item">
+                    <div class="note-title">关于数字化转型的思考</div>
+                    <div class="note-preview">传统企业数字化转型不仅仅是技术更新，更涉及到组织架构和企业文化的全面变革...</div>
+                </div>
+                <div class="note-item">
+                    <div class="note-title">小说创意 - 时间感知者</div>
+                    <div class="note-preview">主角能够感知时间流动的不同速度，在关键时刻让时间变慢从而解决问题...</div>
+                </div>
+                <div class="note-item">
+                    <div class="note-title">项目优化方案</div>
+                    <div class="note-preview">通过重构代码结构和引入缓存机制，预计可提升系统性能40%左右...</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // 为功能卡片添加点击事件
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const featureName = this.querySelector('h3').textContent;
+                alert(`正在进入${featureName}功能...`);
+                // 实际应用中这里会进行页面跳转
+            });
+        });
+    </script>
+</body>
+</html>
