@@ -4,13 +4,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import uno.zhuchen.echonotejava.Project.User.User;
-import uno.zhuchen.echonotejava.Repository.UserRepository;
+import uno.zhuchen.echonotejava.Service.Impl.UserQueryService;
 
 @Component
 public class AuthUtil {
-    private final UserRepository userRepository;
-    public AuthUtil(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    private final UserQueryService userQueryService;
+
+    public AuthUtil(UserQueryService userQueryService) {
+        this.userQueryService = userQueryService;
     }
 
     public Integer getCurrentUserId() {
@@ -19,7 +20,7 @@ public class AuthUtil {
             Object principal = authentication.getPrincipal();
             if (principal instanceof org.springframework.security.core.userdetails.User) {
                 String username = ((org.springframework.security.core.userdetails.User) principal).getUsername();
-                User user = userRepository.findUserAndRolesByUsername(username);
+                User user = userQueryService.findUserAndRolesByUsername(username);
                 return user != null ? user.getId() : null;
             }
         }

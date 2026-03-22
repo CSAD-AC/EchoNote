@@ -1,17 +1,20 @@
 package uno.zhuchen.echonotejava.Service.Impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import uno.zhuchen.echonotejava.Mapper.CategoryMapper;
 import uno.zhuchen.echonotejava.Mapper.TextMapper;
+import uno.zhuchen.echonotejava.Mapper.TextVersionHistoryMapper;
 import uno.zhuchen.echonotejava.Project.Result;
 import uno.zhuchen.echonotejava.Project.Writing.Category;
 import uno.zhuchen.echonotejava.Project.Writing.Text;
-import uno.zhuchen.echonotejava.Repository.WritingRepository;
+import uno.zhuchen.echonotejava.Project.Writing.TextVersionHistory;
 import uno.zhuchen.echonotejava.Service.WritingService;
 import uno.zhuchen.echonotejava.Utils.AuthUtil;
+import uno.zhuchen.echonotejava.Utils.DiffUtil;
 
 import java.util.HashMap;
 import java.util.List;
@@ -21,67 +24,122 @@ import java.util.Map;
 @Service
 @Slf4j
 public class WritingServiceImpl implements WritingService {
-    private final WritingRepository writingRepository;
     private final TextMapper textMapper;
     private final CategoryMapper categoryMapper;
+    private final TextVersionHistoryMapper textVersionHistoryMapper;
     private final AuthUtil authUtil;
+    private final DiffUtil diffUtil;
+
     @Autowired
-    public WritingServiceImpl(WritingRepository writingRepository, AuthUtil authUtil,
-                              TextMapper textMapper, CategoryMapper categoryMapper) {
-        this.writingRepository = writingRepository;
-        this.authUtil = authUtil;
+    public WritingServiceImpl(TextMapper textMapper, CategoryMapper categoryMapper,
+                              TextVersionHistoryMapper textVersionHistoryMapper,
+                              AuthUtil authUtil, DiffUtil diffUtil) {
         this.textMapper = textMapper;
         this.categoryMapper = categoryMapper;
+        this.textVersionHistoryMapper = textVersionHistoryMapper;
+        this.authUtil = authUtil;
+        this.diffUtil = diffUtil;
     }
 
     @Override
     public Result getAllCategory() {
         Integer userId = authUtil.getCurrentUserId();
-        return Result.success(writingRepository.getAllCategoriesByUserId(userId));
+        QueryWrapper<Category> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("user_id", userId);
+        queryWrapper.eq("is_deleted", false);
+        queryWrapper.orderByAsc("sort_order");
+        return Result.success(categoryMapper.selectList(queryWrapper));
     }
 
     @Override
     public Result getAllTexts() {
         Integer userId = authUtil.getCurrentUserId();
-        return Result.success(writingRepository.getAllTextsByUserId(userId));
+        QueryWrapper<Text> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("user_id", userId);
+        queryWrapper.eq("is_deleted", false);
+        queryWrapper.orderByDesc("update_time");
+        return Result.success(textMapper.selectList(queryWrapper));
     }
 
     @Override
     public Result getTextHistory(Integer textId) {
         Integer userId = authUtil.getCurrentUserId();
-        Text text = textMapper.getTextById(textId);
+        Text text = textMapper.selectById(textId.longValue());
         if (text == null) {
             log.error("未找到对应的文章");
             return Result.error("未找到对应的文章");
         }
-        Category category = categoryMapper.getCategoryById(text.getCategoryId());
+        Category category = categoryMapper.selectById(text.getCategoryId().intValue());
         if (!category.getUserId().equals(userId)) {
             log.error("权限校验未通过, 获取文章历史失败");
             return Result.error("权限校验未通过, 获取文章历史失败");
         }
-        return Result.success(writingRepository.getTextHistory(textId));
+
+        List<TextVersionHistory> historyList = textVersionHistoryMapper.getVersionListByTextId(textId.longValue());
+
+        String currentTitle = text.getTitle();
+        String currentContent = text.getContent();
+
+        for (TextVersionHistory history : historyList) {
+            if (history.getVersion() == text.getCurrentVersion()) {
+                history.setTitle(currentTitle);
+                history.setContent(currentContent);
+            } else {
+                String baseTitle = "";
+                String baseContent = "";
+                for (TextVersionHistory older : historyList) {
+                    if (older.getVersion() < history.getVersion()) {
+                        if (older.getTitle() != null) {
+                            baseTitle = older.getTitle();
+                        }
+                        if (older.getContent() != null) {
+                            baseContent = older.getContent();
+                        }
+                        break;
+                    }
+                }
+                history.setTitle(diffUtil.applyTitleDiff(baseTitle, history.getDiffTitle()));
+                history.setContent(diffUtil.applyContentDiff(baseContent, history.getDiffContent()));
+            }
+            history.setCurrentVersion(text.getCurrentVersion());
+        }
+
+        return Result.success(historyList);
     }
 
     @Override
     public Result addCategory(Category category) {
         Integer userId = authUtil.getCurrentUserId();
-        if(!category.getUserId().equals(userId)) {
+        if (!category.getUserId().equals(userId)) {
             log.error("权限校验未通过, 添加分类失败");
             return Result.error("权限校验未通过, 添加分类失败");
         }
-        writingRepository.addCategory(category);
+        categoryMapper.insert(category);
         return Result.success("添加分类成功");
     }
 
     @Override
     public Result addText(Text text) {
         Integer userId = authUtil.getCurrentUserId();
-        Category category = categoryMapper.getCategoryById(text.getCategoryId());
+        Category category = categoryMapper.selectById(text.getCategoryId().intValue());
+        if (category == null) {
+            log.error("未找到对应的分类");
+            return Result.error("未找到对应的分类");
+        }
         if (!category.getUserId().equals(userId)) {
             log.error("权限校验未通过, 新增文章失败");
             return Result.error("权限校验未通过, 新增文章失败");
         }
-        writingRepository.addText(text);
+        text.setUserId(userId.longValue());
+        if (text.getTitle() == null || text.getTitle().isBlank()) {
+            text.setTitle("未命名");
+        }
+        if (text.getContent() == null) {
+            text.setContent("");
+        }
+        text.setCurrentVersion(1);
+        text.setIsDeleted(false);
+        textMapper.insert(text);
         Map<String, Object> map = new HashMap<>();
         map.put("textId", text.getId());
         return Result.success(map);
@@ -90,7 +148,7 @@ public class WritingServiceImpl implements WritingService {
     @Override
     public Result deleteCategoryById(Integer id) {
         Integer userId = authUtil.getCurrentUserId();
-        Category category = categoryMapper.getCategoryById(id);
+        Category category = categoryMapper.selectById(id);
         if (category == null) {
             log.error("未找到对应的分类");
             return Result.error("未找到对应的分类");
@@ -99,31 +157,36 @@ public class WritingServiceImpl implements WritingService {
             log.error("权限校验未通过, 删除分类失败");
             return Result.error("权限校验未通过, 删除分类失败");
         }
-        List<Text> texts = textMapper.getAllTextByCategoryId(id);
-        if(!texts.isEmpty()) {
+        QueryWrapper<Text> textQueryWrapper = new QueryWrapper<>();
+        textQueryWrapper.eq("category_id", id.longValue());
+        textQueryWrapper.eq("is_deleted", false);
+        List<Text> texts = textMapper.selectList(textQueryWrapper);
+        if (!texts.isEmpty()) {
             log.error("该分类下有文章, 请先删除文章");
             return Result.error("该分类下有文章, 请先删除文章");
         }
-        writingRepository.deleteCategoryById(id);
+        Category updateCategory = new Category();
+        updateCategory.setId(id);
+        updateCategory.setIsDeleted(true);
+        categoryMapper.updateById(updateCategory);
         return Result.success("删除分类成功");
-
-
     }
 
     @Override
     public Result softDeleteTextById(Integer id) {
         Integer userId = authUtil.getCurrentUserId();
-        Text text = textMapper.getTextById(id);
+        Text text = textMapper.selectById(id.longValue());
         if (text == null) {
             log.error("未找到对应的文章");
             return Result.error("未找到对应的文章");
         }
-        Category category = categoryMapper.getCategoryById(text.getCategoryId());
+        Category category = categoryMapper.selectById(text.getCategoryId().intValue());
         if (!category.getUserId().equals(userId)) {
             log.error("权限校验未通过, 删除文章失败");
             return Result.error("权限校验未通过, 删除文章失败");
         }
-        writingRepository.sortDeleteTextById(id);
+        text.setIsDeleted(true);
+        textMapper.updateById(text);
         return Result.success("删除文章成功");
     }
 
@@ -131,7 +194,7 @@ public class WritingServiceImpl implements WritingService {
     public Result updateCategory(Category category) {
         String name = category.getName();
         Integer userId = authUtil.getCurrentUserId();
-        category = categoryMapper.getCategoryById(category.getId());
+        category = categoryMapper.selectById(category.getId());
         if (category == null) {
             log.error("未找到对应的分类");
             return Result.error("未找到对应的分类");
@@ -141,80 +204,135 @@ public class WritingServiceImpl implements WritingService {
             return Result.error("权限校验未通过, 修改分类失败");
         }
         category.setName(name);
-        writingRepository.updateCategory(category);
+        categoryMapper.updateById(category);
         return Result.success("修改分类成功");
     }
 
     @Override
     public Result updateText(Text text) {
-        // 核验身份
         Integer userId = authUtil.getCurrentUserId();
-        Text theText = textMapper.getTextForUpdateById(text.getTextId());
+        Text theText = textMapper.selectById(text.getId());
         if (theText == null) {
             log.error("未找到对应的文章");
             return Result.error("未找到对应的文章");
         }
-        Category category = categoryMapper.getCategoryById(theText.getCategoryId());
+        Category category = categoryMapper.selectById(theText.getCategoryId().intValue());
+        if (category == null) {
+            log.error("未找到对应的分类");
+            return Result.error("未找到对应的分类");
+        }
         if (!category.getUserId().equals(userId)) {
             log.error("权限校验未通过, 修改文章失败");
             return Result.error("权限校验未通过, 修改文章失败");
         }
-        // 需要依据最新版本填充version
-        text.setVersion(theText.getCurrentVersion() + 1);
 
-        // 保存文章版本前进行历史记录管理
-        manageTextHistory(text.getTextId());
+        Integer newVersion = theText.getCurrentVersion() + 1;
 
-        writingRepository.updateText(text);
+        String diffTitle = diffUtil.computeTitleDiff(theText.getTitle(), text.getTitle());
+        String diffContent = diffUtil.computeContentDiff(theText.getContent(), text.getContent());
+
+        textVersionHistoryMapper.insertVersionHistory(
+                text.getId(),
+                newVersion,
+                diffTitle,
+                diffContent,
+                null
+        );
+
+        theText.setTitle(text.getTitle());
+        theText.setContent(text.getContent());
+        theText.setCurrentVersion(newVersion);
+        theText.setIsDeleted(false);
+        textMapper.updateById(theText);
+
         return Result.success("修改文章成功");
-
-    }
-    /**
-     * 管理文章历史记录
-     * 保持历史记录数量上限为50份
-     * 超过上限时，通过间隔删除的方式减少历史记录数量
-     * @param textId 文章ID
-     */
-    private void manageTextHistory(Integer textId) {
-        List<Text> historyList = writingRepository.getTextHistory(textId);
-
-        // 如果历史记录数量未达到上限，直接返回
-        if (historyList.size() <= 50) {
-            return;
-        }
-
-        // 当历史记录超过上限时，执行间隔删除策略
-        // 从第一个版本开始，每隔一个版本删除一个版本（即删除版本2、4、6、8...）
-        int deleteCount = historyList.size() - 50;
-        int deleted = 0;
-
-        // 从索引1开始（即第二个版本），每隔一个删除一个
-        for (int i = 1; i < historyList.size() && deleted < deleteCount; i++) {
-            Text textToDelete = historyList.get(i);
-            // 删除该版本的历史记录
-            textMapper.deleteBackupTextById(textToDelete.getId());
-            deleted++;
-
-            // 跳过下一个版本（实现每隔一个删除一个的效果）
-            i++;
-        }
     }
 
     @Override
     public Result resetTextVersion(Integer textId, Integer version) {
         Integer userId = authUtil.getCurrentUserId();
-        Text theText = textMapper.getTextById(textId);
-        if (theText == null) {
+        Text currentText = textMapper.selectById(textId.longValue());
+        if (currentText == null) {
             log.error("未找到对应的文章");
             return Result.error("未找到对应的文章");
         }
-        Category category = categoryMapper.getCategoryById(theText.getCategoryId());
+        Category category = categoryMapper.selectById(currentText.getCategoryId().intValue());
         if (!category.getUserId().equals(userId)) {
             log.error("权限校验未通过, 重置文章版本失败");
             return Result.error("权限校验未通过, 重置文章版本失败");
         }
-        writingRepository.resetVersion(textId, version);
+
+        TextVersionHistory targetVersion = textVersionHistoryMapper.getVersionByVersionNumber(
+                textId.longValue(), version);
+
+        if (targetVersion == null) {
+            log.error("未找到对应的历史版本");
+            return Result.error("未找到对应的历史版本");
+        }
+
+        String restoredTitle = diffUtil.applyTitleDiff("", targetVersion.getDiffTitle());
+        String restoredContent = diffUtil.applyContentDiff("", targetVersion.getDiffContent());
+
+        Integer newVersion = currentText.getCurrentVersion() + 1;
+
+        textVersionHistoryMapper.insertVersionHistory(
+                textId.longValue(),
+                newVersion,
+                diffUtil.computeTitleDiff(currentText.getTitle(), restoredTitle),
+                diffUtil.computeContentDiff(currentText.getContent(), restoredContent),
+                "从版本" + version + "还原"
+        );
+
+        currentText.setTitle(restoredTitle);
+        currentText.setContent(restoredContent);
+        currentText.setCurrentVersion(newVersion);
+        textMapper.updateById(currentText);
+
         return Result.success("重置文章版本成功");
+    }
+
+    @Override
+    @Transactional
+    public Result softDeleteTextVersion(Integer textId, Integer version) {
+        Integer userId = authUtil.getCurrentUserId();
+        Text currentText = textMapper.selectById(textId.longValue());
+        if (currentText == null) {
+            log.error("未找到对应的文章");
+            return Result.error("未找到对应的文章");
+        }
+
+        Category category = categoryMapper.selectById(currentText.getCategoryId().intValue());
+        if (category == null) {
+            log.error("未找到对应的分类");
+            return Result.error("未找到对应的分类");
+        }
+        if (!category.getUserId().equals(userId)) {
+            log.error("权限校验未通过, 删除历史版本失败");
+            return Result.error("权限校验未通过, 删除历史版本失败");
+        }
+        if (version <= 1) {
+            log.error("基础版本不支持删除");
+            return Result.error("基础版本不支持删除");
+        }
+        if (version >= currentText.getCurrentVersion()) {
+            log.error("当前版本不支持删除");
+            return Result.error("当前版本不支持删除");
+        }
+
+        TextVersionHistory targetVersion = textVersionHistoryMapper.getVersionByVersionNumber(
+                textId.longValue(), version);
+        if (targetVersion == null) {
+            log.error("未找到对应的历史版本");
+            return Result.error("未找到对应的历史版本");
+        }
+
+        textVersionHistoryMapper.softDeleteVersion(textId.longValue(), version);
+        textVersionHistoryMapper.decrementVersionsAfter(textId.longValue(), version);
+
+        currentText.setCurrentVersion(currentText.getCurrentVersion() - 1);
+        textMapper.updateById(currentText);
+
+        return Result.success("删除历史版本成功");
     }
 
 }

@@ -1,20 +1,13 @@
 package uno.zhuchen.echonotejava.Mapper;
 
-
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
-import uno.zhuchen.echonotejava.Project.User.Role;
 import uno.zhuchen.echonotejava.Project.User.User;
 
-import java.util.Set;
-
-
+/**
+ * 用户Mapper接口
+ * 继承BaseMapper后可使用Mybatis-Plus提供的常用CRUD方法
+ */
 @Mapper
-public interface UserMapper {
-    User findByUsername(String username);
-
-    void addUser(User user);
-
-    void updateUser(User user);  // 依据ID更新对象，需要提前将id设置好
-
-    void changeEnabledUser(Integer id);
+public interface UserMapper extends BaseMapper<User> {
 }

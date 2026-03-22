@@ -1,23 +1,76 @@
+# 服务配置
+server:
+  port: 8080
+
 spring:
   application:
-    name: SpringSecurity
+    name: EchoNote-JAVA
 
   datasource:
-    url: jdbc:mysql://localhost:3306/echonote
+    url: jdbc:mysql://localhost:3306/echonote?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
     username: root
-    password: 1353914278
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+  # Sa-Token配置
+  sa-token:
+    token-name: Authorization
+    timeout: 86400
+    active-timeout: -1
+    is-concurrent: true
+    is-share: false
+    token-style: uuid
+    is-log: false
 
   security:
     user:
       name: user
       password: 123456
 
-mybatis:
+# Mybatis-Plus配置
+mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath*:/uno/zhuchen/echonotejava/Mapper/*.xml
+  type-aliases-package: uno.zhuchen.echonotejava.Project.**.java
 
-# 配置JWT生成token密钥和持续时间  -- 自定义
+# MinIO配置（暂时不使用）
+minio:
+  endpoint: http://localhost:9000
+  accessKey: minioadmin
+  secretKey: minioadmin
+  bucketName: echonote
+  secure: false
+
+# 配置JWT生成token密钥和持续时间
 jwt:
   secret: ewAiADkAOgA8ADcAWQBbAF0AXwBjAGUAaQBwAHMAfQB/AIEAhwCJAI0AkwCVAJcAmQCbAJ0AnwChAKMApQCnAKkAqwCtAK8AsQCzALUAtwC5ALsAvQC/AMEAwwDFAMcAyQDLAM0AzwDRANMA1QDXANkA2wDdAN8A4QDjAOUA5wDpAOsA7QDvAPEA8wD1APcA+QD7AP0A/w==
   expiration: 86400000

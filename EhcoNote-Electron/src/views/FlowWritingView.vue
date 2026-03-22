@@ -329,6 +329,14 @@
               </el-button>
               <el-button
                 size="small"
+                type="danger"
+                :disabled="record.version === record.currentVersion"
+                @click="deleteHistoryVersion(record)"
+              >
+                🗑️ 删除此版本
+              </el-button>
+              <el-button
+                size="small"
                 type="warning"
                 @click="revertToVersion(record)"
               >
@@ -362,6 +370,7 @@ import {
   getTexts,
   getTextHistory,
   resetTextVersion,
+  deleteTextVersion as apiDeleteTextVersion,
   addCategory as apiAddCategory,
   addText as apiAddText,
   deleteCategory as apiDeleteCategory,
@@ -572,13 +581,7 @@ const showHistory = async () => {
     showHistoryDialog.value = true;
     const response = await getTextHistory(currentDoc.value.id);
     if (response.code === 200) {
-      // 过滤掉当前版本的历史记录
-      const currentContent = currentDoc.value.content || "";
-      const currentTitle = currentDoc.value.title || "";
-      historyRecords.value = (response.data || []).filter(
-        (record) =>
-          record.content !== currentContent || record.title !== currentTitle
-      );
+      historyRecords.value = response.data || [];
     } else {
       ElMessage.error(response.message || "获取历史记录失败");
     }
@@ -607,10 +610,10 @@ const revertToVersion = async (record) => {
       }
     );
 
-    const response = await resetTextVersion({
-      textId: currentDoc.value.id,
-      version: record.version,
-    });
+    const response = await resetTextVersion(
+      currentDoc.value.id,
+      record.version
+    );
 
     if (response.code === 200) {
       ElMessage.success("版本回退成功");
@@ -630,6 +633,45 @@ const revertToVersion = async (record) => {
     if (error !== "cancel") {
       console.error("版本回退错误:", error);
       ElMessage.error("版本回退失败");
+    }
+  }
+};
+
+const deleteHistoryVersion = async (record) => {
+  if (record.version === record.currentVersion) {
+    ElMessage.warning("当前版本不支持删除");
+    return;
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除版本 ${record.version} 吗？删除后剩余版本号会自动顺延。`,
+      "删除历史版本确认",
+      {
+        confirmButtonText: "确定删除",
+        cancelButtonText: "取消",
+        type: "warning",
+      }
+    );
+
+    const response = await apiDeleteTextVersion(
+      currentDoc.value.id,
+      record.version
+    );
+
+    if (response.code === 200) {
+      ElMessage.success("历史版本删除成功");
+      const historyResponse = await getTextHistory(currentDoc.value.id);
+      if (historyResponse.code === 200) {
+        historyRecords.value = historyResponse.data || [];
+      }
+    } else {
+      ElMessage.error(response.message || "删除历史版本失败");
+    }
+  } catch (error) {
+    if (error !== "cancel") {
+      console.error("删除历史版本错误:", error);
+      ElMessage.error("删除历史版本失败");
     }
   }
 };
@@ -727,7 +769,7 @@ const createNewDocument = async () => {
       selectDocument(newDoc);
 
       // 创建文档后立即保存一次
-      await saveDocument();
+      await saveDocument({ force: true });
 
       nextTick(() => {
         editor.value?.focus();
@@ -745,15 +787,20 @@ const createNewDocument = async () => {
 // 添加一个标志位，防止重复保存
 let isSaving = false;
 
-// 修改 saveDocument 函数，添加防重复机制
-const saveDocument = async () => {
+// 修改 saveDocument 函数，区分手动保存和自动保存
+const saveDocument = async ({ showMessage = false, force = false } = {}) => {
   // 如果正在保存，则直接返回
   if (isSaving) {
-    return;
+    return false;
   }
 
   // 如果没有文档ID，则直接返回
-  if (!currentDoc.value.id) return;
+  if (!currentDoc.value.id) {
+    if (showMessage) {
+      ElMessage.warning("当前没有可保存的文档");
+    }
+    return false;
+  }
 
   // 设置保存标志位
   isSaving = true;
@@ -783,12 +830,15 @@ const saveDocument = async () => {
           currentWordCount - latestWordCount
         );
 
-        // 如果字数差异小于20字，则不提交更新
-        if (wordCountDifference < 20) {
+        // 如果字数差异小于20字，则不提交更新；手动保存时强制提交
+        if (!force && wordCountDifference < 20) {
           console.log(
             `字数差异过小（${wordCountDifference}字），跳过本次更新提交`
           );
-          return;
+          if (showMessage) {
+            ElMessage.success("保存成功");
+          }
+          return true;
         }
       }
     } catch (error) {
@@ -810,21 +860,36 @@ const saveDocument = async () => {
     // 调用API保存文档
     try {
       const response = await apiUpdateText({
-        textId: currentDoc.value.id,
+        id: currentDoc.value.id,
         title: currentDoc.value.title || "无标题",
         content: currentDoc.value.content,
       });
 
+      if (response.code === 200) {
+        if (showMessage) {
+          ElMessage.success("保存成功");
+        }
+        return true;
+      }
+
       if (response.code !== 200) {
         console.error("保存文档失败:", response.message);
+        if (showMessage) {
+          ElMessage.error(response.message || "保存失败");
+        }
       }
     } catch (error) {
       console.error("保存文档错误:", error);
+      if (showMessage) {
+        ElMessage.error("保存失败");
+      }
     }
   } finally {
     // 保存完成后重置标志位
     isSaving = false;
   }
+
+  return false;
 };
 
 const deleteCategory = async (categoryId) => {
@@ -1146,6 +1211,13 @@ const stopAutoSaveTimer = () => {
 
 // 全局键盘事件处理器（主要处理ESC键）
 const handleGlobalKeydown = (e) => {
+  // Ctrl+S / Cmd+S 手动保存
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    saveDocument({ showMessage: true, force: true });
+    return;
+  }
+
   // ESC 键退出专注模式
   if (e.key === "Escape" && focusMode.value) {
     e.preventDefault();
@@ -1289,7 +1361,7 @@ const handleBeforeUnload = () => {
     try {
       // 准备要发送的数据
       const saveData = {
-        textId: currentDoc.value.id,
+        id: currentDoc.value.id,
         title: currentDoc.value.title || "无标题",
         content: currentDoc.value.content,
       };

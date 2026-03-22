@@ -1,5 +1,6 @@
 package uno.zhuchen.echonotejava.Project.Writing;
 
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,16 +10,33 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@TableName("text")
 public class Text {
-    private Integer id;
-    private Integer categoryId;
-    private Integer currentVersion;
-    private Integer version;
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    @TableField("category_id")
+    private Long categoryId;
+
+    @TableField("user_id")
+    private Long userId;
+
     private String title;
+
     private String content;
-    private Boolean status;
+
+    @TableField("current_version")
+    private Integer currentVersion;
+
+    @TableField("is_deleted")
+    private Boolean isDeleted;
+
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
-    private Integer TextId; // 用于兼容备份数据读取
+    @TableField(exist = false)
+    private Long textId;
 }

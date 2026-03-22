@@ -4,31 +4,11 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="uno.zhuchen.echonotejava.Mapper.MoodsMapper">
-
-    <insert id="addMood" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO moods(name) VALUES
-        (#{name})
-    </insert>
-    <update id="updateMood">
-        UPDATE moods
-        <set>
-            <if test="name != null">
-                name = #{name},
-            </if>
-        </set>
-        WHERE id = #{id}
-    </update>
-    <delete id="deleteMoodById">
-        DELETE FROM moods WHERE id = #{id}
-    </delete>
     <select id="findAllMoodByCapsulesId" resultType="uno.zhuchen.echonotejava.Project.Capsules.Mood">
-        SELECT moods.id, name, createTime FROM moods left join capsules_moods ON moods.id = capsules_moods.moodId WHERE capsules_moods.capsuleId = #{id}
-    </select>
-    <select id="findMoodById" resultType="uno.zhuchen.echonotejava.Project.Capsules.Mood">
-        SELECT id, name, createTime FROM moods WHERE id = #{id}
-    </select>
-    <select id="getPreMoods" resultType="uno.zhuchen.echonotejava.Project.Capsules.Mood">
-        SELECT id, name, createTime FROM moods WHERE id <![CDATA[<=]]> 40 ORDER BY id
+        SELECT moods.id, moods.name, moods.create_time AS createTime
+        FROM moods
+        LEFT JOIN capsules_moods ON moods.id = capsules_moods.mood_id
+        WHERE capsules_moods.capsule_id = #{id}
     </select>
 
 </mapper>

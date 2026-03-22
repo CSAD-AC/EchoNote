@@ -41,9 +41,10 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        // 放行OPTIONS预检请求和注册请求
+        // 放行OPTIONS预检请求、注册请求和登录请求
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())
-                || "/register".equalsIgnoreCase(request.getRequestURI())) {
+                || "/register".equalsIgnoreCase(request.getRequestURI())
+                || "/login".equalsIgnoreCase(request.getRequestURI())) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -75,12 +76,6 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
             }
         } else {
             log.debug("未找到有效的JWT令牌");
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            Map<String, String> responseBody = new HashMap<>();
-            responseBody.put("error", "用户未登录");
-            new ObjectMapper().writeValue(response.getOutputStream(), responseBody);
-            return;
         }
 
         filterChain.doFilter(request, response);

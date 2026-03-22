@@ -1,5 +1,6 @@
 package uno.zhuchen.echonotejava.Controller;
 
+import com.github.difflib.patch.PatchFailedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import uno.zhuchen.echonotejava.Project.Result;
@@ -78,7 +79,7 @@ public class WritingController {
 
     @PutMapping("/text")
     public Result updateText(@RequestBody Text text) {
-        if (text.getTextId() == null || text.getTitle() == null
+        if (text.getId() == null || text.getTitle() == null
                 || text.getContent() == null) {
             log.error("updateText方法参数错误");
             return Result.error("参数错误");
@@ -86,11 +87,20 @@ public class WritingController {
         return writingService.updateText(text);
     }
     @PutMapping("/text/reset")
-    public Result resetTextVersion(@RequestBody Text text) {
-        if (text.getTextId() == null || text.getVersion() == null) {
+    public Result resetTextVersion(@RequestParam Integer textId, @RequestParam Integer version) throws PatchFailedException {
+        if (textId == null || version == null) {
             log.error("resetTextVersion方法参数错误");
             return Result.error("参数错误");
         }
-        return writingService.resetTextVersion(text.getTextId(), text.getVersion());
+        return writingService.resetTextVersion(textId, version);
+    }
+
+    @DeleteMapping("/text/history")
+    public Result softDeleteTextVersion(@RequestParam Integer textId, @RequestParam Integer version) {
+        if (textId == null || version == null) {
+            log.error("softDeleteTextVersion方法参数错误");
+            return Result.error("参数错误");
+        }
+        return writingService.softDeleteTextVersion(textId, version);
     }
 }

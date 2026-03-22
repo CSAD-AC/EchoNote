@@ -2,3 +2,9 @@ EchoNote-Electron/node_modules
 docker/mysql-data/
 docker/dist/
 Database_Backup/
+EchoNote-JAVA/.idea/
+EchoNote-JAVA/.mvn/
+EchoNote-JAVA/target/
+**/*.calss
+.trae/
+**/target/

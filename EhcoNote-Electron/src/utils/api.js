@@ -135,13 +135,22 @@ export const getTextHistory = (textId) => {
 
 /**
  * 文章版本回退
- * @param {Object} data - 回退数据
- * @param {number} data.textId - 文章ID
- * @param {number} data.version - 目标版本号
+ * @param {number} textId - 文章ID
+ * @param {number} version - 目标版本号
  * @returns {Promise} - 返回回退结果
  */
-export const resetTextVersion = (data) => {
-  return request.put("/writing/text/reset", data);
+export const resetTextVersion = (textId, version) => {
+  return request.put("/writing/text/reset", {}, { params: { textId, version } });
+};
+
+/**
+ * 软删除指定文章历史版本
+ * @param {number} textId - 文章ID
+ * @param {number} version - 目标版本号
+ * @returns {Promise} - 返回删除结果
+ */
+export const deleteTextVersion = (textId, version) => {
+  return request.delete("/writing/text/history", { textId, version });
 };
 
 /**
@@ -197,7 +206,7 @@ export const renameCategory = (data) => {
 /**
  * 更新文章
  * @param {Object} data - 文章数据
- * @param {number} data.textId - 文章ID
+ * @param {number} data.id - 文章ID
  * @param {string} data.title - 文章标题
  * @param {string} data.content - 文章内容
  * @returns {Promise} - 返回更新结果

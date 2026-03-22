@@ -1,6 +1,6 @@
 package uno.zhuchen.echonotejava.Project.User;
 
-
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,16 +14,34 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@TableName("user")
 public class User {
-    private Integer id;     // 用户id
-    private String userName;// 用户名
-    private String password;// 密码
-    private String email;   // 邮箱
-    private String image;   // 头像
-    private String name;    // 昵称
-    private Set<Role> roles;// 角色
-    private boolean enabled = true;
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
-}
+    @TableId(type = IdType.AUTO)
+    private Integer id;
 
+    private String userName;
+
+    private String password;
+
+    private String email;
+
+    @TableField("avatar_url")
+    private String image;
+
+    private String name;
+
+    @TableField(exist = false)
+    private Set<Role> roles;
+
+    @TableField("is_enabled")
+    private Boolean enabled = true;
+
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createTime;
+
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updateTime;
+
+    @TableLogic
+    private Integer deleted;
+}

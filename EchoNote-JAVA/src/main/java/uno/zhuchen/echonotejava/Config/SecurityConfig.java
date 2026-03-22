@@ -21,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import uno.zhuchen.echonotejava.Filter.JwtAuthenticationFilter;
 import uno.zhuchen.echonotejava.Filter.JwtAuthorizationFilter;
+import uno.zhuchen.echonotejava.Service.Impl.UserQueryService;
 import uno.zhuchen.echonotejava.Service.Impl.UserDetailsServiceImpl;
 
 import java.util.List;
@@ -37,8 +38,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter(AuthenticationManager authenticationManager) {
-            return new JwtAuthenticationFilter(authenticationManager);
+        public JwtAuthenticationFilter jwtAuthenticationFilter(AuthenticationManager authenticationManager, UserQueryService userQueryService) {
+            return new JwtAuthenticationFilter(authenticationManager, userQueryService);
     }
 
     @Bean

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="uno.zhuchen.echonotejava.Mapper.TextVersionHistoryMapper">
+
+    <insert id="insertVersionHistory">
+        INSERT INTO text_version_history (text_id, version, diff_title, diff_content, change_summary)
+        VALUES (#{textId}, #{version}, #{diffTitle}, #{diffContent}, #{changeSummary})
+    </insert>
+
+    <select id="getVersionHistoryByTextId" resultType="uno.zhuchen.echonotejava.Project.Writing.TextVersionHistory">
+        SELECT id, text_id as textId, version, diff_title as diffTitle,
+               diff_content as diffContent, change_summary as changeSummary,
+               create_time as createTime, deleted
+        FROM text_version_history
+        WHERE text_id = #{textId} AND deleted = 0
+        ORDER BY version DESC
+    </select>
+
+    <select id="getVersionByVersionNumber" resultType="uno.zhuchen.echonotejava.Project.Writing.TextVersionHistory">
+        SELECT id, text_id as textId, version, diff_title as diffTitle,
+               diff_content as diffContent, change_summary as changeSummary,
+               create_time as createTime, deleted
+        FROM text_version_history
+        WHERE text_id = #{textId} AND version = #{version} AND deleted = 0
+    </select>
+
+    <select id="getVersionListByTextId" resultType="uno.zhuchen.echonotejava.Project.Writing.TextVersionHistory">
+        SELECT id, text_id as textId, version, diff_title as diffTitle,
+               diff_content as diffContent, change_summary as changeSummary,
+               create_time as createTime, deleted
+        FROM text_version_history
+        WHERE text_id = #{textId} AND deleted = 0
+        ORDER BY version DESC
+    </select>
+
+    <update id="softDeleteVersion">
+        UPDATE text_version_history
+        SET deleted = 1
+        WHERE text_id = #{textId} AND version = #{version} AND deleted = 0
+    </update>
+
+    <update id="decrementVersionsAfter">
+        UPDATE text_version_history
+        SET version = version - 1
+        WHERE text_id = #{textId} AND version > #{version} AND deleted = 0
+    </update>
+
+</mapper>
